@@ -1,6 +1,6 @@
-# Ubuntu Cursor Docker
+# Cursor In Docker
 
-Run Cursor IDE in Docker with Ubuntu base image.
+Run Cursor IDE in Docker with Ubuntu base image. Enjoy!!
 
 ## What it is
 
