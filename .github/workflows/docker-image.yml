@@ -19,19 +19,33 @@ jobs:
       - name: Echo build start
         run: echo "Starting Docker build process..."
 
-      - name: Build Docker image
+      # Build Ubuntu version (latest)
+      - name: Build Ubuntu Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./Dockerfile
           push: false
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=ubuntu
+          cache-to: type=gha,mode=max,scope=ubuntu
           load: true
 
-      - name: Test image
+      # Build CentOS version
+      - name: Build CentOS Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.centos
+          push: false
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
+          cache-from: type=gha,scope=centos
+          cache-to: type=gha,mode=max,scope=centos
+          load: true
+
+      - name: Test images
         run: |
-          echo "Testing if image was built successfully..."
+          echo "Testing if images were built successfully..."
           docker images | grep cursord
           echo "Image details above"
 
@@ -47,4 +61,5 @@ jobs:
         run: |
           echo "Starting push to Docker Hub..."
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
           echo "Push completed"

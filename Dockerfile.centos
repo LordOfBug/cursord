@@ -1,0 +1,126 @@
+FROM centos:7
+
+# replace repos to avoid the mirror URL problem
+ADD centos/repos /etc/yum.repos.d
+
+# Install base dependencies
+RUN yum install -y epel-release && \
+    yum update -y && \
+    yum install -y \
+    wget \
+    tar \
+    gzip \
+    make \
+    gcc \
+    gcc-c++ \
+    bzip2 \
+    git \
+    file \
+    vim \
+    net-tools \
+    which \
+    zlib-devel \
+    glibc-devel \
+    glibc-devel.i686 \
+    glibc-i686 \
+    libmpc-devel \
+    mpfr-devel \
+    gmp-devel
+
+# Install Development Tools group
+RUN yum groupinstall -y "Development Tools"
+
+# Build and install make 4.3
+WORKDIR /tmp
+RUN wget https://ftp.gnu.org/gnu/make/make-4.3.tar.gz && \
+    tar xzf make-4.3.tar.gz && \
+    cd make-4.3 && \
+    ./configure --prefix=/usr && \
+    make -j$(nproc) && \
+    make install && \
+    cd /tmp && \
+    rm -rf make-4.3*
+
+# Install GCC 9
+WORKDIR /tmp
+RUN wget https://ftp.gnu.org/gnu/gcc/gcc-9.5.0/gcc-9.5.0.tar.gz && \
+    tar xf gcc-9.5.0.tar.gz && \
+    cd gcc-9.5.0 && \
+    ./configure \
+        --enable-languages=c,c++ \
+        --disable-multilib \
+        --with-system-zlib \
+        --prefix=/usr && \
+    make -j$(nproc) && \
+    make install && \
+    cd /tmp && \
+    rm -rf gcc-9.5.0*
+
+# Update path to use new gcc
+ENV PATH=/usr/local/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:$LD_LIBRARY_PATH
+
+# Build and install glibc 2.28
+WORKDIR /tmp
+RUN wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz && \
+    tar -xvzf glibc-2.28.tar.gz && \
+    mkdir -p glibc-2.28/build && \
+    cd glibc-2.28/build && \
+    ../configure \
+        --prefix='/usr' \
+        --disable-profile \
+        --enable-add-ons \
+        --with-headers=/usr/include \
+        --with-binutils=/usr/bin && \
+    make -j$(nproc) && \
+    make install && \
+    cd /tmp && \
+    rm -rf glibc-2.28* && \
+    ldconfig
+
+# Install X11 and other required packages
+RUN yum install -y \
+    xorg-x11-xauth \
+    xorg-x11-utils \
+    mesa-libGL \
+    mesa-dri-drivers \
+    mesa-libGLU \
+    libX11 \
+    libXext \
+    libXrender \
+    libXtst \
+    fuse \
+    fuse-libs \
+    xdg-utils \
+    firefox && \
+    yum clean all
+
+# Download and set up cursor.app
+RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
+    chmod +x /tmp/cursor.app && \
+    /tmp/cursor.app --appimage-extract && \
+    mv squashfs-root /usr/local/cursor && \
+    rm /tmp/cursor.app
+
+# Prepare directories
+RUN mkdir -p /run/dbus
+
+ENV APPDIR=/usr/local/cursor
+
+# Set environment variable for X11 display
+ENV DISPLAY=:0
+
+# Add local library paths
+RUN echo "/usr/local/lib64" > /etc/ld.so.conf.d/local-lib64.conf && \
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
+    ldconfig
+
+COPY cursor.sh /bin/cursor.sh
+
+RUN chmod +x /bin/cursor.sh
+
+# Verify versions
+RUN gcc --version && make --version && ldd --version
+
+# Start the application
+CMD ["cursor.sh"]
