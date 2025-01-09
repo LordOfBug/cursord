@@ -36,10 +36,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.centos
-          target: toolchain-builder
+          file: ./Dockerfile.centos-base
           push: false
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/centos7-gcc9.5-glibc-2.28:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/centos7-base:latest
           cache-from: type=gha,scope=centos-base
           cache-to: type=gha,mode=max,scope=centos-base
           load: true
@@ -51,6 +50,8 @@ jobs:
           context: .
           file: ./Dockerfile.centos
           push: false
+          build-args: |
+            DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
           cache-from: type=gha,scope=centos
           cache-to: type=gha,mode=max,scope=centos
@@ -74,6 +75,6 @@ jobs:
         run: |
           echo "Starting push to Docker Hub..."
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/centos7-gcc9.5-glibc-2.28:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/centos7-base:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
           echo "Push completed"
