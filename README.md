@@ -9,6 +9,8 @@ This project provides a Docker container that allows you to run [Cursor](https:/
 - Testing Cursor in Ubuntu without modifying your host system
 - Ensuring consistent development environment across different machines
 
+The prebuild version is availabe on docker hub as [buglord/cursord:latest](https://hub.docker.com/r/buglord/cursord)
+
 ## How to run on MacOS
 
 1. Prerequisites:
