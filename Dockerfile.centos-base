@@ -58,7 +58,8 @@ RUN wget https://ftp.gnu.org/gnu/gcc/gcc-9.5.0/gcc-9.5.0.tar.gz && \
 
 # Update path to use new gcc
 ENV PATH=/usr/local/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib:$LD_LIBRARY_PATH
+
+RUN echo "Checking environment after GCC build:" && echo $LD_LIBRARY_PATH
 
 # Build and install glibc 2.28
 WORKDIR /tmp
@@ -66,6 +67,7 @@ RUN wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz && \
     tar -xvzf glibc-2.28.tar.gz && \
     mkdir -p glibc-2.28/build && \
     cd glibc-2.28/build && \
+    unset LD_LIBRARY_PATH && \
     ../configure \
         --prefix='/usr' \
         --disable-profile \
@@ -82,6 +84,9 @@ RUN wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz && \
 RUN echo "/usr/local/lib64" > /etc/ld.so.conf.d/local-lib64.conf && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
     ldconfig
+
+# Set library path after everything is installed
+ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib
 
 # Verify toolchain versions
 RUN gcc --version && make --version && ldd --version
