@@ -1,4 +1,5 @@
-FROM centos:7
+# Stage 1: Build the base toolchain
+FROM centos:7 AS toolchain-builder
 
 # replace repos to avoid the mirror URL problem
 ADD centos/repos /etc/yum.repos.d
@@ -78,6 +79,17 @@ RUN wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz && \
     rm -rf glibc-2.28* && \
     ldconfig
 
+# Add local library paths
+RUN echo "/usr/local/lib64" > /etc/ld.so.conf.d/local-lib64.conf && \
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
+    ldconfig
+
+# Verify toolchain versions
+RUN gcc --version && make --version && ldd --version
+
+# Stage 2: Build the application
+FROM toolchain-builder
+
 # Install X11 and other required packages
 RUN yum install -y \
     xorg-x11-xauth \
@@ -110,17 +122,8 @@ ENV APPDIR=/usr/local/cursor
 # Set environment variable for X11 display
 ENV DISPLAY=:0
 
-# Add local library paths
-RUN echo "/usr/local/lib64" > /etc/ld.so.conf.d/local-lib64.conf && \
-    echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
-    ldconfig
-
 COPY cursor.sh /bin/cursor.sh
-
 RUN chmod +x /bin/cursor.sh
-
-# Verify versions
-RUN gcc --version && make --version && ldd --version
 
 # Start the application
 CMD ["cursor.sh"]

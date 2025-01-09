@@ -31,8 +31,21 @@ jobs:
           cache-to: type=gha,mode=max,scope=ubuntu
           load: true
 
-      # Build CentOS version
-      - name: Build CentOS Docker image
+      # Build CentOS toolchain base
+      - name: Build CentOS toolchain base
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.centos
+          target: toolchain-builder
+          push: false
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/centos7-gcc9.5-glibc-2.28:latest
+          cache-from: type=gha,scope=centos-base
+          cache-to: type=gha,mode=max,scope=centos-base
+          load: true
+
+      # Build CentOS cursor version
+      - name: Build CentOS cursor image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -46,7 +59,7 @@ jobs:
       - name: Test images
         run: |
           echo "Testing if images were built successfully..."
-          docker images | grep cursord
+          docker images | grep "${{ secrets.DOCKERHUB_USERNAME }}"
           echo "Image details above"
 
       - name: Log in to Docker Hub
@@ -61,5 +74,6 @@ jobs:
         run: |
           echo "Starting push to Docker Hub..."
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/centos7-gcc9.5-glibc-2.28:latest
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
           echo "Push completed"
