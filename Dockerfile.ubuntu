@@ -8,8 +8,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y \
     wget \
     sudo \
-    fuse3 \
-    libfuse2 \
     xorg \
     xrdp \
     xfce4 \
@@ -33,9 +31,10 @@ RUN apt update && apt install -y \
     libgbm1 \
     libasound2 \
     && apt clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    # Install Firefox ESR (non-snap version)
-    add-apt-repository ppa:mozillateam/ppa -y && \
+    rm -rf /var/lib/apt/lists/*
+    
+# Install Firefox ESR (non-snap version)
+RUN add-apt-repository ppa:mozillateam/ppa -y && \
     echo 'Package: *' > /etc/apt/preferences.d/mozilla-firefox && \
     echo 'Pin: release o=LP-PPA-mozillateam' >> /etc/apt/preferences.d/mozilla-firefox && \
     echo 'Pin-Priority: 1001' >> /etc/apt/preferences.d/mozilla-firefox && \
@@ -43,15 +42,6 @@ RUN apt update && apt install -y \
     apt install -y firefox-esr && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
-
-# Configure FUSE
-RUN set -ex && \
-    mkdir -p /sys/fs/fuse && \
-    touch /etc/fuse.conf && \
-    echo "user_allow_other" >> /etc/fuse.conf && \
-    groupadd -f fuse && \
-    mkdir -p /dev && \
-    mknod -m 666 /dev/fuse c 10 229 || true
 
 # Configure XRDP
 RUN adduser xrdp ssl-cert && \
@@ -65,13 +55,7 @@ RUN useradd -m -s /bin/bash cursor && \
     echo "cursor ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
     echo "cursor:cursor" | chpasswd && \
     cp /root/.xsession /home/cursor/.xsession && \
-    chown cursor:cursor /home/cursor/.xsession && \
-    usermod -a -G fuse cursor
-
-# Download cursor.app
-RUN wget -O /home/cursor/cursor.app https://downloader.cursor.sh/linux && \
-    chmod +x /home/cursor/cursor.app && \
-    chown cursor:cursor /home/cursor/cursor.app
+    chown cursor:cursor /home/cursor/.xsession
 
 # Set up supervisord configuration
 RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
@@ -85,14 +69,33 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
+# Download cursor from cursor.sh
+RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
+    chmod +x /tmp/cursor.app && \
+    /tmp/cursor.app --appimage-extract && \
+    mv squashfs-root /usr/local/cursor && \
+    chown -R cursor:cursor /usr/local/cursor && \
+    rm /tmp/cursor.app
+
 # Set environment variables
-ENV APPDIR=/home/cursor
-ENV CHROME_FLAGS="--no-sandbox --disable-gpu --disable-dev-shm-usage"
+ENV APPDIR=/usr/local/cursor
 
 # Copy cursor startup script
 COPY cursor-ubuntu.sh /bin/cursor.sh
 RUN chmod +x /bin/cursor.sh && \
     chown cursor:cursor /bin/cursor.sh
+
+# Create desktop shortcut for Cursor
+RUN mkdir -p /home/cursor/Desktop && \
+    echo "[Desktop Entry]" > /home/cursor/Desktop/cursor.desktop && \
+    echo "Name=Cursor" >> /home/cursor/Desktop/cursor.desktop && \
+    echo "Exec=/bin/cursor.sh" >> /home/cursor/Desktop/cursor.desktop && \
+    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/cursor/Desktop/cursor.desktop && \
+    echo "Terminal=false" >> /home/cursor/Desktop/cursor.desktop && \
+    echo "Type=Application" >> /home/cursor/Desktop/cursor.desktop && \
+    echo "Categories=Development;" >> /home/cursor/Desktop/cursor.desktop && \
+    chmod +x /home/cursor/Desktop/cursor.desktop && \
+    chown -R cursor:cursor /home/cursor/Desktop
 
 # Expose XRDP port
 EXPOSE 3389
