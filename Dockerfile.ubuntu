@@ -1,0 +1,101 @@
+# Use Ubuntu base image
+FROM ubuntu:22.04
+
+# Set non-interactive mode for apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install essential dependencies
+RUN apt update && apt install -y \
+    wget \
+    sudo \
+    fuse3 \
+    libfuse2 \
+    xorg \
+    xrdp \
+    xfce4 \
+    xfce4-terminal \
+    xdg-utils \
+    dbus-x11 \
+    xauth \
+    supervisor \
+    software-properties-common \
+    # Chrome/Electron app dependencies
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    && apt clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    # Install Firefox ESR (non-snap version)
+    add-apt-repository ppa:mozillateam/ppa -y && \
+    echo 'Package: *' > /etc/apt/preferences.d/mozilla-firefox && \
+    echo 'Pin: release o=LP-PPA-mozillateam' >> /etc/apt/preferences.d/mozilla-firefox && \
+    echo 'Pin-Priority: 1001' >> /etc/apt/preferences.d/mozilla-firefox && \
+    apt update && \
+    apt install -y firefox-esr && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Configure FUSE
+RUN set -ex && \
+    mkdir -p /sys/fs/fuse && \
+    touch /etc/fuse.conf && \
+    echo "user_allow_other" >> /etc/fuse.conf && \
+    groupadd -f fuse && \
+    mkdir -p /dev && \
+    mknod -m 666 /dev/fuse c 10 229 || true
+
+# Configure XRDP
+RUN adduser xrdp ssl-cert && \
+    echo "startxfce4" > /etc/skel/.xsession && \
+    sed -i 's/max_bpp=32/max_bpp=128/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/xserverbpp=24/xserverbpp=128/g' /etc/xrdp/xrdp.ini && \
+    echo "xfce4-session" > /root/.xsession
+
+# Create cursor user
+RUN useradd -m -s /bin/bash cursor && \
+    echo "cursor ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    echo "cursor:cursor" | chpasswd && \
+    cp /root/.xsession /home/cursor/.xsession && \
+    chown cursor:cursor /home/cursor/.xsession && \
+    usermod -a -G fuse cursor
+
+# Download cursor.app
+RUN wget -O /home/cursor/cursor.app https://downloader.cursor.sh/linux && \
+    chmod +x /home/cursor/cursor.app && \
+    chown cursor:cursor /home/cursor/cursor.app
+
+# Set up supervisord configuration
+RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
+    echo "nodaemon=true" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[program:xrdp]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp -n" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[program:xrdp-sesman]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
+
+# Set environment variables
+ENV APPDIR=/home/cursor
+ENV CHROME_FLAGS="--no-sandbox --disable-gpu --disable-dev-shm-usage"
+
+# Copy cursor startup script
+COPY cursor-ubuntu.sh /bin/cursor.sh
+RUN chmod +x /bin/cursor.sh && \
+    chown cursor:cursor /bin/cursor.sh
+
+# Expose XRDP port
+EXPOSE 3389
+
+# Set entrypoint to supervisord
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

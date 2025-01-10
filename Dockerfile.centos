@@ -1,39 +1,84 @@
-FROM buglord/centos7-base:latest
+ARG DOCKERHUB_USERNAME
+FROM ${DOCKERHUB_USERNAME}/centos7-base:latest
 
-# Install X11 and other required packages
-RUN yum install -y \
+# Install EPEL repository
+RUN yum -y install epel-release
+
+# Install X server, XFCE desktop, and XRDP
+RUN yum groupinstall -y "X Window System" "Xfce" && \
+    yum install -y \
+    xrdp \
+    xrdp-selinux \
+    supervisor \
+    which \
+    firefox \
     xorg-x11-xauth \
     xorg-x11-utils \
     mesa-libGL \
-    mesa-dri-drivers \
-    mesa-libGLU \
     libX11 \
+    libXcomposite \
+    libXcursor \
+    libXdamage \
     libXext \
-    libXrender \
+    libXi \
     libXtst \
     fuse \
     fuse-libs \
-    xdg-utils \
-    firefox && \
+    xdg-utils && \
     yum clean all
+
+# Configure XRDP
+RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
+    sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
+    echo "exec startxfce4" > ~/.Xclients && \
+    chmod +x ~/.Xclients
+
+# Create supervisord config
+RUN echo "[supervisord]" > /etc/supervisord.conf && \
+    echo "nodaemon=true" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    echo "[program:xrdp-sesman]" >> /etc/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp-sesman --nodaemon" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    echo "[program:xrdp]" >> /etc/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp --nodaemon" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    echo "[program:cursor]" >> /etc/supervisord.conf && \
+    echo "command=/bin/cursor.sh" >> /etc/supervisord.conf && \
+    echo "user=xrdp" >> /etc/supervisord.conf && \
+    echo "environment=DISPLAY=:0,HOME=/home/xrdp" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf
+
+# Set default password for user xrdp
+RUN useradd -m xrdp && \
+    echo "xrdp:xrdp" | chpasswd && \
+    usermod -aG wheel xrdp
 
 # Download and set up cursor.app
 RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
     chmod +x /tmp/cursor.app && \
     /tmp/cursor.app --appimage-extract && \
     mv squashfs-root /usr/local/cursor && \
-    rm /tmp/cursor.app
+    rm /tmp/cursor.app && \
+    chown -R xrdp:xrdp /usr/local/cursor
 
 # Prepare directories
-RUN mkdir -p /run/dbus
+RUN mkdir -p /run/dbus && \
+    chown -R xrdp:xrdp /run/dbus
 
 ENV APPDIR=/usr/local/cursor
 
+# Expose port 3389 for XRDP
+EXPOSE 3389
+
+# Copy cursor startup script
+COPY cursor-centos.sh /bin/cursor.sh
+RUN chmod +x /bin/cursor.sh && \
+    chown xrdp:xrdp /bin/cursor.sh
+
+# Set supervisor as entrypoint
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+
 # Set environment variable for X11 display
 ENV DISPLAY=:0
-
-COPY cursor.sh /bin/cursor.sh
-RUN chmod +x /bin/cursor.sh
-
-# Start the application
-CMD ["cursor.sh"]
