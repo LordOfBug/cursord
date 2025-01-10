@@ -34,6 +34,17 @@ jobs:
           cache-from: type=gha,scope=ubuntu
           cache-to: type=gha,mode=max,scope=ubuntu
 
+      # Build and push Ubuntu version
+      - name: Build and push Ubuntu Docker with Desktop image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.ubuntu
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:ubuntu
+          cache-from: type=gha,scope=ubuntu-desktop
+          cache-to: type=gha,mode=max,scope=ubuntu-desktop
+
       # Build and push CentOS toolchain base
       - name: Build and push CentOS toolchain base
         uses: docker/build-push-action@v5
@@ -55,8 +66,8 @@ jobs:
           build-args: |
             DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
-          cache-from: type=gha,scope=centos
-          cache-to: type=gha,mode=max,scope=centos
+          cache-from: type=gha,scope=centos-desktop
+          cache-to: type=gha,mode=max,scope=centos-desktop
 
       - name: Test images
         run: |
