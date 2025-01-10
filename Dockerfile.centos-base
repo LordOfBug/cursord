@@ -83,7 +83,7 @@ RUN tar -xvzf glibc-2.28.tar.gz && \
         --with-headers=/usr/include \
         --with-binutils=/usr/bin \
         --disable-sanity-checks \
-        --disable-werror && \
+        --disable-werror \
         --enable-obsolete-nsl
 
 RUN make && make install
