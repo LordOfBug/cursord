@@ -1,7 +1,9 @@
-FROM buglord/centos7-base:latest
+# FROM buglord/centos7-base:latest
+FROM centos:7
 
-# Install required packages
-RUN yum install -y \
+# Install X server, XFCE desktop, and essential packages
+RUN yum groupinstall -y "X Window System" "Xfce" && \
+    yum install -y \
     xrdp \
     xrdp-selinux \
     supervisor \

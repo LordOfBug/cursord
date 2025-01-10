@@ -6,7 +6,6 @@ ADD centos/repos /etc/yum.repos.d
 # Install base dependencies
 RUN yum install -y epel-release && \
     yum update -y && \
-    yum groupinstall -y "X Window System" "Xfce" && \
     yum install -y \
     wget \
     tar \
