@@ -16,53 +16,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Echo build start
-        run: echo "Starting Docker build process..."
-
-      # Build Ubuntu version (latest)
-      - name: Build Ubuntu Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:latest
-          cache-from: type=gha,scope=ubuntu
-          cache-to: type=gha,mode=max,scope=ubuntu
-          load: true
-
-      # Build CentOS toolchain base
-      - name: Build CentOS toolchain base
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.centos-base
-          push: false
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/centos7-base:latest
-          cache-from: type=gha,scope=centos-base
-          cache-to: type=gha,mode=max,scope=centos-base
-          load: true
-
-      # Build CentOS cursor version
-      - name: Build CentOS cursor image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.centos
-          push: false
-          build-args: |
-            DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
-          cache-from: type=gha,scope=centos
-          cache-to: type=gha,mode=max,scope=centos
-          load: true
-
-      - name: Test images
-        run: |
-          echo "Testing if images were built successfully..."
-          docker images | grep "${{ secrets.DOCKERHUB_USERNAME }}"
-          echo "Image details above"
-
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -70,11 +23,43 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push to Docker Hub
-        if: github.event_name != 'pull_request'
+      # Build and push Ubuntu version (latest)
+      - name: Build and push Ubuntu Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:latest
+          cache-from: type=gha,scope=ubuntu
+          cache-to: type=gha,mode=max,scope=ubuntu
+
+      # Build and push CentOS toolchain base
+      - name: Build and push CentOS toolchain base
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.centos-base
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/centos7-base:latest
+          cache-from: type=gha,scope=centos-base
+          cache-to: type=gha,mode=max,scope=centos-base
+
+      # Build and push CentOS cursor version
+      - name: Build and push CentOS cursor image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.centos
+          push: ${{ github.event_name != 'pull_request' }}
+          build-args: |
+            DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
+          cache-from: type=gha,scope=centos
+          cache-to: type=gha,mode=max,scope=centos
+
+      - name: Test images
         run: |
-          echo "Starting push to Docker Hub..."
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/centos7-base:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
-          echo "Push completed"
+          echo "Testing if images were built successfully..."
+          docker images | grep "${{ secrets.DOCKERHUB_USERNAME }}"
+          echo "Image details above"
