@@ -1,16 +1,7 @@
 FROM buglord/centos7-base:latest
 
-# Set environment variables to prevent interactive prompts
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV LC_ALL=en_US.UTF-8
-ENV TERM=xterm
-
-# Prevent systemd from running during build
-ENV container docker
-
 # Install X server, XFCE desktop, and essential packages in separate commands
-RUN yum install -y \
+RUN yum install -y --nogpgcheck --setopt=tsflags=nodocs \
     xorg-x11-server-Xorg \
     xorg-x11-xauth \
     xorg-x11-utils \
