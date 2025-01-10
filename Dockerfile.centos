@@ -1,10 +1,10 @@
-ARG DOCKERHUB_USERNAME
-FROM ${DOCKERHUB_USERNAME}/centos7-base:latest
+FROM buglord/centos7-base:latest
 
 # Install EPEL repository
-RUN yum -y install epel-release
+RUN yum -y install epel-release && \
+    yum -y update
 
-# Install X server, XFCE desktop, and XRDP
+# Install X server, XFCE desktop, and essential packages
 RUN yum groupinstall -y "X Window System" "Xfce" && \
     yum install -y \
     xrdp \
@@ -24,61 +24,87 @@ RUN yum groupinstall -y "X Window System" "Xfce" && \
     libXtst \
     fuse \
     fuse-libs \
-    xdg-utils && \
+    xdg-utils \
+    wget \
+    dbus \
+    dbus-x11 && \
     yum clean all
 
 # Configure XRDP
 RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
-    echo "exec startxfce4" > ~/.Xclients && \
-    chmod +x ~/.Xclients
+    systemctl enable xrdp
+
+# Set up default user
+RUN useradd -m xrdp && \
+    echo "xrdp:xrdp" | chpasswd && \
+    usermod -aG wheel xrdp
+
+# Configure XFCE session
+RUN echo "startxfce4" > /home/xrdp/.Xclients && \
+    chmod +x /home/xrdp/.Xclients && \
+    chown xrdp:xrdp /home/xrdp/.Xclients
+
+# Set up D-Bus and required directories
+RUN mkdir -p /run/dbus && \
+    mkdir -p /var/run/dbus && \
+    dbus-uuidgen > /var/lib/dbus/machine-id && \
+    chown -R xrdp:xrdp /run/dbus
 
 # Create supervisord config
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
+    echo "[program:dbus]" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp-sesman]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman --nodaemon" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp --nodaemon" >> /etc/supervisord.conf && \
-    echo "" >> /etc/supervisord.conf && \
-    echo "[program:cursor]" >> /etc/supervisord.conf && \
-    echo "command=/bin/cursor.sh" >> /etc/supervisord.conf && \
-    echo "user=xrdp" >> /etc/supervisord.conf && \
-    echo "environment=DISPLAY=:0,HOME=/home/xrdp" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf
 
-# Set default password for user xrdp
-RUN useradd -m xrdp && \
-    echo "xrdp:xrdp" | chpasswd && \
-    usermod -aG wheel xrdp
+# Configure system for AppImage support
+RUN echo "user_allow_other" >> /etc/fuse.conf && \
+    modprobe fuse || true
 
-# Download and set up cursor.app
+
+# Download and install Cursor
 RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
     chmod +x /tmp/cursor.app && \
     /tmp/cursor.app --appimage-extract && \
     mv squashfs-root /usr/local/cursor && \
-    rm /tmp/cursor.app && \
-    chown -R xrdp:xrdp /usr/local/cursor
+    chown -R xrdp:xrdp /usr/local/cursor && \
+    rm /tmp/cursor.app
 
-# Prepare directories
-RUN mkdir -p /run/dbus && \
-    chown -R xrdp:xrdp /run/dbus
-
+# Set environment variables
 ENV APPDIR=/usr/local/cursor
-
-# Expose port 3389 for XRDP
-EXPOSE 3389
 
 # Copy cursor startup script
 COPY cursor-centos.sh /bin/cursor.sh
 RUN chmod +x /bin/cursor.sh && \
-    chown xrdp:xrdp /bin/cursor.sh
+    chown cursor:cursor /bin/cursor.sh
 
-# Set supervisor as entrypoint
+# Create desktop shortcut for Cursor
+RUN mkdir -p /home/xrdp/Desktop && \
+    echo "[Desktop Entry]" > /home/xrdp/Desktop/cursor.desktop && \
+    echo "Name=Cursor" >> /home/xrdp/Desktop/cursor.desktop && \
+    echo "Exec=/bin/cursor.sh" >> /home/xrdp/Desktop/cursor.desktop && \
+    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/xrdp/Desktop/cursor.desktop && \
+    echo "Terminal=false" >> /home/xrdp/Desktop/cursor.desktop && \
+    echo "Type=Application" >> /home/xrdp/Desktop/cursor.desktop && \
+    echo "Categories=Development;" >> /home/xrdp/Desktop/cursor.desktop && \
+    chmod +x /home/xrdp/Desktop/cursor.desktop && \
+    chown -R xrdp:xrdp /home/xrdp/Desktop
+
+ENV LANG=en_US.UTF-8
+
+# Expose XRDP port
+EXPOSE 3389
+
+# Start supervisord
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
-
-# Set environment variable for X11 display
-ENV DISPLAY=:0

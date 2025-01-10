@@ -1,9 +1,6 @@
 #!/bin/bash
 
-APPDIR=/usr/local/cursor
-
-# start dbus
-dbus-daemon --system --fork
+export APPDIR=/usr/local/cursor
 
 # start app
 $APPDIR/AppRun --no-sandbox
