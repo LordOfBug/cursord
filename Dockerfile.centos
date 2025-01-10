@@ -1,7 +1,7 @@
 FROM buglord/centos7-base:latest
 
 # Install X server, XFCE desktop, and essential packages in separate commands
-RUN yum install -y --nogpgcheck --setopt=tsflags=nodocs \
+RUN ulimit -n 1024 && yum install -y \
     xorg-x11-server-Xorg \
     xorg-x11-xauth \
     xorg-x11-utils \
@@ -9,7 +9,7 @@ RUN yum install -y --nogpgcheck --setopt=tsflags=nodocs \
     mesa-libGL \
     dbus-x11
 
-RUN yum install -y \
+RUN ulimit -n 1024 && yum install -y \
     xfce4-session \
     xfce4-panel \
     xfce4-terminal \
@@ -17,7 +17,7 @@ RUN yum install -y \
     xfdesktop \
     thunar
 
-RUN yum install -y \
+RUN ulimit -n 1024 && yum install -y \
     xrdp \
     xrdp-selinux \
     supervisor \
