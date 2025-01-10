@@ -1,37 +1,28 @@
 FROM buglord/centos7-base:latest
 
-RUN yum clean all && yum makecache
-
-RUN yum install xorg-x11-server-Xorg -y -v --debuglevel=10
-
-# Install X server, XFCE desktop, and essential packages in separate commands
-RUN ulimit -n 1024 && yum install -y \
-    xorg-x11-server-Xorg \
-    xorg-x11-xauth \
-    xorg-x11-utils \
-    xorg-x11-drivers \
-    mesa-libGL \
-    dbus-x11
-
-RUN ulimit -n 1024 && yum install -y \
-    xfce4-session \
-    xfce4-panel \
-    xfce4-terminal \
-    xfwm4 \
-    xfdesktop \
-    thunar
-
-RUN ulimit -n 1024 && yum install -y \
+# Install required packages
+RUN yum install -y \
     xrdp \
     xrdp-selinux \
     supervisor \
     which \
     firefox \
+    xorg-x11-xauth \
+    xorg-x11-utils \
+    mesa-libGL \
+    libX11 \
+    libXcomposite \
+    libXcursor \
+    libXdamage \
+    libXext \
+    libXi \
+    libXtst \
     fuse \
     fuse-libs \
     xdg-utils \
     wget \
-    dbus && \
+    dbus \
+    dbus-x11 && \
     yum clean all
 
 # Configure XRDP

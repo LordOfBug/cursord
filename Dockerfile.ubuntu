@@ -30,18 +30,28 @@ RUN apt update && apt install -y \
     libxrandr2 \
     libgbm1 \
     libasound2 \
+    # XDG integration dependencies
+    desktop-file-utils \
+    mime-support \
     && apt clean && \
     rm -rf /var/lib/apt/lists/*
-    
-# Install Firefox ESR (non-snap version)
-RUN add-apt-repository ppa:mozillateam/ppa -y && \
-    echo 'Package: *' > /etc/apt/preferences.d/mozilla-firefox && \
-    echo 'Pin: release o=LP-PPA-mozillateam' >> /etc/apt/preferences.d/mozilla-firefox && \
-    echo 'Pin-Priority: 1001' >> /etc/apt/preferences.d/mozilla-firefox && \
+
+# Install Chrome and set as default browser
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt update && \
-    apt install -y firefox-esr && \
+    apt install -y google-chrome-stable && \
     apt clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /etc/opt/chrome/policies/managed && \
+    echo '{"CommandLineFlagSecurityWarningsEnabled": false, "DefaultBrowserSettingEnabled": false}' > /etc/opt/chrome/policies/managed/managed_policies.json && \
+    echo '#!/bin/bash' > /usr/bin/google-chrome-stable && \
+    echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type "$@"' >> /usr/bin/google-chrome-stable && \
+    chmod +x /usr/bin/google-chrome-stable && \
+    update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/bin/google-chrome-stable 500 && \
+    update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/bin/google-chrome-stable 500 && \
+    xdg-settings set default-web-browser google-chrome.desktop
+
 
 # Configure XRDP
 RUN adduser xrdp ssl-cert && \

@@ -11,6 +11,11 @@ This project provides a Docker container that allows you to run [Cursor](https:/
 
 The prebuild version is availabe on docker hub as [buglord/cursord:latest](https://hub.docker.com/r/buglord/cursord)
 
+### Latest Update
+On Mac, XQuartz is slow so I decided to build the full desktop version, Ubuntu and CentOS are available.
+- Ubuntu Desktop version: [buglord/cursord:ubuntu](https://hub.docker.com/r/buglord/cursord)
+- CentOS Desktop version: [buglord/cursord:centos](https://hub.docker.com/r/buglord/cursord)
+
 ## How to run on MacOS
 
 1. Prerequisites:
