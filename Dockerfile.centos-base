@@ -88,6 +88,9 @@ RUN tar -xvzf glibc-2.28.tar.gz && \
 
 RUN cd /tmp/glibc-2.28/build && make
 
+# Fix possible error in test check after make
+RUN cd /tmp/glibc-2.28/build && sed -i 's#\&\& \$name ne "nss_test1" \&\& \$name ne "libgcc_s"#\&\& \$name ne "nss_test1" \&\& \$name ne "libgcc_s" \&\& \$name ne "nss_test2"#' ../scripts/test-installation.pl
+
 RUN cd /tmp/glibc-2.28/build && make install
 
 RUN cd /tmp && rm -rf glibc-2.28*
