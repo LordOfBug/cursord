@@ -2,13 +2,24 @@
 FROM centos:7
 
 # Install X server, XFCE desktop, and essential packages
+RUN yum install -y epel-release && \
+    # Add Chrome repository
+    cat << EOF > /etc/yum.repos.d/google-chrome.repo
+[google-chrome]
+name=google-chrome
+baseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://dl.google.com/linux/linux_signing_key.pub
+EOF
+    
 RUN yum groupinstall -y "X Window System" "Xfce" && \
     yum install -y \
     xrdp \
     xrdp-selinux \
     supervisor \
     which \
-    firefox \
+    google-chrome-stable \
     xorg-x11-xauth \
     xorg-x11-utils \
     mesa-libGL \
@@ -24,7 +35,9 @@ RUN yum groupinstall -y "X Window System" "Xfce" && \
     xdg-utils \
     wget \
     dbus \
-    dbus-x11 && \
+    dbus-x11 \
+    redhat-lsb-core \
+    liberation-fonts && \
     yum clean all
 
 # Configure XRDP
@@ -98,6 +111,19 @@ RUN mkdir -p /home/xrdp/Desktop && \
     chmod +x /home/xrdp/Desktop/cursor.desktop && \
     chown -R xrdp:xrdp /home/xrdp/Desktop
 
+
+# Configure Chrome as default browser
+RUN mkdir -p /home/xrdp/.config && \
+    echo "[Default Applications]" > /home/xrdp/.config/mimeapps.list && \
+    echo "x-scheme-handler/http=google-chrome.desktop" >> /home/xrdp/.config/mimeapps.list && \
+    echo "x-scheme-handler/https=google-chrome.desktop" >> /home/xrdp/.config/mimeapps.list && \
+    echo "text/html=google-chrome.desktop" >> /home/xrdp/.config/mimeapps.list && \
+    chown -R xrdp:xrdp /home/xrdp/.config
+
+# Add Chrome policy to disable sandbox (required for running in container)
+RUN mkdir -p /etc/opt/chrome/policies/managed && \
+    echo '{ "AllowInsecureLocalhost": true, "SandboxLinux": false }' > /etc/opt/chrome/policies/managed/policy.json
+    
 ENV LANG=en_US.UTF-8
 
 # Expose XRDP port

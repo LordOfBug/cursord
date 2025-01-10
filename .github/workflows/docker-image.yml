@@ -68,9 +68,3 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:centos
           cache-from: type=gha,scope=centos-desktop
           cache-to: type=gha,mode=max,scope=centos-desktop
-
-      - name: Test images
-        run: |
-          echo "Testing if images were built successfully..."
-          docker images | grep "${{ secrets.DOCKERHUB_USERNAME }}"
-          echo "Image details above"
