@@ -67,48 +67,7 @@ RUN echo "GCC version: $(gcc --version | head -1)"
 
 # Build and install glibc 2.28
 WORKDIR /tmp
-RUN wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz && \
-    tar -xvzf glibc-2.28.tar.gz && \
-    mkdir -p glibc-2.28/build && \
-    cd glibc-2.28/build && \
-    unset LD_LIBRARY_PATH && \
-    # Backup existing libraries
-    mkdir -p /usr/lib64.backup && \
-    cp -a /usr/lib64/lib*.so* /usr/lib64.backup/ && \
-    CFLAGS="-O2 -Wno-error=missing-attributes" ../configure \
-        --prefix='/usr' \
-        --disable-profile \
-        --enable-add-ons \
-        --with-headers=/usr/include \
-        --with-binutils=/usr/bin \
-        --disable-sanity-checks \
-        --disable-werror && \
-    make -j$(nproc) PERL=/usr/bin/perl && \
-    # Skip running tests and install directly
-    make install-strip && \
-    cd /tmp && \
-    rm -rf glibc-2.28*
-
-# Fix library links
-RUN cd /usr/lib64 && \
-    for f in lib*.so.*; do \
-        base=$(echo $f | sed 's/\([^.]*\)\..*/\1/'); \
-        if [ -L "$base.so" ]; then \
-            rm "$base.so"; \
-        fi; \
-        ln -s $f "$base.so"; \
-    done
-
-# Update library cache
-RUN ldconfig
-
-# Add local library paths
-RUN echo "/usr/local/lib64" > /etc/ld.so.conf.d/local-lib64.conf && \
-    echo "/usr/local/lib" > /etc/ld.so.conf.d/local-lib.conf && \
-    ldconfig
-
-# Set library path
-ENV LD_LIBRARY_PATH=/usr/lib64:/usr/local/lib64:/usr/local/lib
+RUN wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz
 
 # Verify toolchain versions
 RUN gcc --version && make --version && ldd --version
