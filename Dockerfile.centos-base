@@ -71,7 +71,7 @@ RUN wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz
 
 RUN tar -xvzf glibc-2.28.tar.gz && \
     mkdir -p glibc-2.28/build && \
-    Cd Glibc-2.28/Build && \
+    cd glibc-2.28/build && \
     unset LD_LIBRARY_PATH && \
     # Backup existing libraries
     mkdir -p /usr/lib64.backup && \
@@ -83,7 +83,7 @@ RUN tar -xvzf glibc-2.28.tar.gz && \
         --with-headers=/usr/include \
         --with-binutils=/usr/bin \
         --disable-sanity-checks \
-        --disable-werror && \
+        --disable-werror \
         --enable-obsolete-nsl
 
 RUN make && make install
