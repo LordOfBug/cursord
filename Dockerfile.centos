@@ -1,5 +1,9 @@
 FROM buglord/centos7-base:latest
 
+RUN yum clean all && yum makecache
+
+RUN yum install xorg-x11-server-Xorg -y -v --debuglevel=10
+
 # Install X server, XFCE desktop, and essential packages in separate commands
 RUN ulimit -n 1024 && yum install -y \
     xorg-x11-server-Xorg \
