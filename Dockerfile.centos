@@ -1,19 +1,13 @@
 # FROM buglord/centos7-base:latest
 FROM centos:7
 
+ADD centos/repos /etc/yum.repos.d
+
 # Install X server, XFCE desktop, and essential packages
+COPY google-chrome.repo /etc/yum.repos.d/
+
 RUN yum install -y epel-release && \
-    # Add Chrome repository
-    cat << EOF > /etc/yum.repos.d/google-chrome.repo
-[google-chrome]
-name=google-chrome
-baseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64
-enabled=1
-gpgcheck=1
-gpgkey=https://dl.google.com/linux/linux_signing_key.pub
-EOF
-    
-RUN yum groupinstall -y "X Window System" "Xfce" && \
+    yum groupinstall -y "X Window System" "Xfce" && \
     yum install -y \
     xrdp \
     xrdp-selinux \
