@@ -1,5 +1,5 @@
 # First stage to copy GLIBC
-FROM buglord/centos-base:latest as glibc
+FROM buglord/centos7-base:latest as glibc
 FROM centos:7
 
 # Copy GLIBC from base image
