@@ -1,11 +1,13 @@
-# FROM buglord/centos7-base:latest
+# First stage to copy GLIBC
+FROM buglord/centos-base:latest as glibc
 FROM centos:7
+
+# Copy GLIBC from base image
+COPY --from=glibc /opt/glibc-2.28 /opt/glibc-2.28
 
 ADD centos/repos /etc/yum.repos.d
 
-# Install X server, XFCE desktop, and essential packages
-COPY google-chrome.repo /etc/yum.repos.d/
-
+# Install X server, XFCE desktop, and essential packages (without Chrome)
 RUN yum install -y epel-release && \
     yum groupinstall -y "X Window System" "Xfce" && \
     yum install -y \
@@ -13,7 +15,6 @@ RUN yum install -y epel-release && \
     xrdp-selinux \
     supervisor \
     which \
-    google-chrome-stable \
     xorg-x11-xauth \
     xorg-x11-utils \
     mesa-libGL \
@@ -31,8 +32,17 @@ RUN yum install -y epel-release && \
     dbus \
     dbus-x11 \
     redhat-lsb-core \
-    liberation-fonts && \
-    yum clean all
+    liberation-fonts \
+    && yum clean all
+
+# Install Chrome with custom library path, ignoring dependencies
+RUN yum install -y --setopt=skip_missing_names_on_install=True google-chrome-stable && \
+    echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/chrome-libs.sh
+
+# Create Chrome wrapper script
+RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
+    echo 'LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH exec /usr/bin/google-chrome "$@"' >> /usr/local/bin/chrome-wrapper.sh && \
+    chmod +x /usr/local/bin/chrome-wrapper.sh
 
 # Configure XRDP
 RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
@@ -109,10 +119,20 @@ RUN mkdir -p /home/xrdp/Desktop && \
 # Configure Chrome as default browser
 RUN mkdir -p /home/xrdp/.config && \
     echo "[Default Applications]" > /home/xrdp/.config/mimeapps.list && \
-    echo "x-scheme-handler/http=google-chrome.desktop" >> /home/xrdp/.config/mimeapps.list && \
-    echo "x-scheme-handler/https=google-chrome.desktop" >> /home/xrdp/.config/mimeapps.list && \
-    echo "text/html=google-chrome.desktop" >> /home/xrdp/.config/mimeapps.list && \
+    echo "x-scheme-handler/http=chrome-wrapper.desktop" >> /home/xrdp/.config/mimeapps.list && \
+    echo "x-scheme-handler/https=chrome-wrapper.desktop" >> /home/xrdp/.config/mimeapps.list && \
+    echo "text/html=chrome-wrapper.desktop" >> /home/xrdp/.config/mimeapps.list && \
     chown -R xrdp:xrdp /home/xrdp/.config
+
+# Create Chrome wrapper desktop entry
+RUN echo "[Desktop Entry]" > /usr/share/applications/chrome-wrapper.desktop && \
+    echo "Version=1.0" >> /usr/share/applications/chrome-wrapper.desktop && \
+    echo "Name=Google Chrome" >> /usr/share/applications/chrome-wrapper.desktop && \
+    echo "Exec=/usr/local/bin/chrome-wrapper.sh %U" >> /usr/share/applications/chrome-wrapper.desktop && \
+    echo "Terminal=false" >> /usr/share/applications/chrome-wrapper.desktop && \
+    echo "Icon=google-chrome" >> /usr/share/applications/chrome-wrapper.desktop && \
+    echo "Type=Application" >> /usr/share/applications/chrome-wrapper.desktop && \
+    echo "Categories=Network;WebBrowser;" >> /usr/share/applications/chrome-wrapper.desktop
 
 # Add Chrome policy to disable sandbox (required for running in container)
 RUN mkdir -p /etc/opt/chrome/policies/managed && \

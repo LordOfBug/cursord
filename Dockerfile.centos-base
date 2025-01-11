@@ -77,7 +77,7 @@ RUN tar -xvzf glibc-2.28.tar.gz && \
     mkdir -p /usr/lib64.backup && \
     cp -a /usr/lib64/lib*.so* /usr/lib64.backup/ && \
     CFLAGS="-O2 -Wno-error=missing-attributes" ../configure \
-        --prefix='/usr' \
+        --prefix='/opt/glibc-2.28' \
         --disable-profile \
         --enable-add-ons \
         --with-headers=/usr/include \
