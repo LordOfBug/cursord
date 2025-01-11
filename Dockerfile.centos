@@ -1,11 +1,5 @@
 # First stage to copy GLIBC
-FROM buglord/centos7-base:latest as glibc
-FROM centos:7
-
-# Copy GLIBC from base image
-COPY --from=glibc /opt/glibc-2.28 /opt/glibc-2.28
-
-ADD centos/repos /etc/yum.repos.d
+FROM buglord/centos7-base:latest
 
 # Install X server, XFCE desktop, and essential packages (without Chrome)
 RUN yum install -y epel-release && \
