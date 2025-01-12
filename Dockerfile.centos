@@ -61,46 +61,16 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/crypt_level=high/crypt_level=low/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/use_compression=true/use_compression=false/g' /etc/xrdp/xrdp.ini && \
-    sed -i '/\[Globals\]/,/\[/d' /etc/xrdp/xrdp.ini && \
-    echo "[Globals]" > /etc/xrdp/xrdp.ini.tmp && \
-    echo "bitmap_cache=yes" >> /etc/xrdp/xrdp.ini.tmp && \
-    echo "bitmap_compression=no" >> /etc/xrdp/xrdp.ini.tmp && \
-    echo "port=3389" >> /etc/xrdp/xrdp.ini.tmp && \
-    echo "crypt_level=low" >> /etc/xrdp/xrdp.ini.tmp && \
-    echo "channel_code=1" >> /etc/xrdp/xrdp.ini.tmp && \
-    echo "max_bpp=24" >> /etc/xrdp/xrdp.ini.tmp && \
-    echo "" >> /etc/xrdp/xrdp.ini.tmp && \
-    cat /etc/xrdp/xrdp.ini >> /etc/xrdp/xrdp.ini.tmp && \
-    mv /etc/xrdp/xrdp.ini.tmp /etc/xrdp/xrdp.ini && \
-    sed -i '/\[Xorg\]/,/\[/d' /etc/xrdp/xrdp.ini && \
-    echo "" >> /etc/xrdp/xrdp.ini && \
-    echo "[Xorg]" >> /etc/xrdp/xrdp.ini && \
-    echo "name=Xorg" >> /etc/xrdp/xrdp.ini && \
-    echo "lib=libxup.so" >> /etc/xrdp/xrdp.ini && \
-    echo "username=ask" >> /etc/xrdp/xrdp.ini && \
-    echo "password=ask" >> /etc/xrdp/xrdp.ini && \
-    echo "ip=127.0.0.1" >> /etc/xrdp/xrdp.ini && \
-    echo "port=-1" >> /etc/xrdp/xrdp.ini && \
-    echo "code=20" >> /etc/xrdp/xrdp.ini && \
-    sed -i '/\[vnc\]/,/\[/d' /etc/xrdp/xrdp.ini && \
-    sed -i 's/^\[xrdp1\]/;\[xrdp1\]/' /etc/xrdp/xrdp.ini && \
-    sed -i 's/^name=sesman-Xvnc/;name=sesman-Xvnc/' /etc/xrdp/xrdp.ini && \
-    sed -i 's/^lib=libvnc.so/;lib=libvnc.so/' /etc/xrdp/xrdp.ini && \
-    echo "" >> /etc/xrdp/xrdp.ini && \
-    echo "[xrdp1]" >> /etc/xrdp/xrdp.ini && \
-    echo "name=sesman-Xorg" >> /etc/xrdp/xrdp.ini && \
-    echo "lib=libxup.so" >> /etc/xrdp/xrdp.ini && \
-    echo "username=ask" >> /etc/xrdp/xrdp.ini && \
-    echo "password=ask" >> /etc/xrdp/xrdp.ini && \
-    echo "ip=127.0.0.1" >> /etc/xrdp/xrdp.ini && \
-    echo "port=-1" >> /etc/xrdp/xrdp.ini
+    sed -i 's/port=3389/port=3389\nuse_fastpath=both\ntcp_nodelay=true\nxserverbpp=24\nmax_bpp=24\nnew_cursors=true/' /etc/xrdp/xrdp.ini && \
+    sed -i '/Module/a\    Load "dbe"\n    Load "ddc"\n    Load "extmod"\n    Load "glx"\n    Load "int10"\n    Load "record"\n    Load "vbe"\n    Load "glamoregl"\n    Load "xorgxrdp"\n    Load "fb"' /etc/X11/xrdp/xorg.conf
 
 # Configure XRDP session settings
 RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "ListenAddress=127.0.0.1" >> /etc/xrdp/sesman.ini && \
+    echo "ListenPort=3350" >> /etc/xrdp/sesman.ini && \
     echo "EnableUserWindowManager=true" >> /etc/xrdp/sesman.ini && \
-    echo "UserWindowManager=startwm.sh" >> /etc/xrdp/sesman.ini && \
-    echo "DefaultWindowManager=startwm.sh" >> /etc/xrdp/sesman.ini && \
+    echo "UserWindowManager=/etc/xrdp/startwm.sh" >> /etc/xrdp/sesman.ini && \
+    echo "DefaultWindowManager=/etc/xrdp/startwm.sh" >> /etc/xrdp/sesman.ini && \
     echo "" >> /etc/xrdp/sesman.ini && \
     echo "[Security]" >> /etc/xrdp/sesman.ini && \
     echo "AllowRootLogin=true" >> /etc/xrdp/sesman.ini && \
@@ -121,20 +91,26 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "param=-nolisten" >> /etc/xrdp/sesman.ini && \
     echo "param=tcp" >> /etc/xrdp/sesman.ini
 
-# Create startup script
+# Create startup script with proper environment
 RUN echo '#!/bin/bash' > /etc/xrdp/startwm.sh && \
-    echo 'if [ -r /etc/profile ]; then' >> /etc/xrdp/startwm.sh && \
-    echo '    . /etc/profile' >> /etc/xrdp/startwm.sh && \
-    echo 'fi' >> /etc/xrdp/startwm.sh && \
-    echo 'if [ -r $HOME/.profile ]; then' >> /etc/xrdp/startwm.sh && \
-    echo '    . $HOME/.profile' >> /etc/xrdp/startwm.sh && \
-    echo 'fi' >> /etc/xrdp/startwm.sh && \
-    echo 'export XDG_SESSION_TYPE=x11' >> /etc/xrdp/startwm.sh && \
-    echo 'export XDG_CURRENT_DESKTOP=XFCE' >> /etc/xrdp/startwm.sh && \
-    echo 'export DESKTOP_SESSION=xfce' >> /etc/xrdp/startwm.sh && \
+    echo 'export LANG=en_US.UTF-8' >> /etc/xrdp/startwm.sh && \
     echo 'export DISPLAY=:10' >> /etc/xrdp/startwm.sh && \
+    echo 'export DESKTOP_SESSION=xfce' >> /etc/xrdp/startwm.sh && \
+    echo 'export XDG_SESSION_TYPE=x11' >> /etc/xrdp/startwm.sh && \
+    echo 'export XDG_SESSION_DESKTOP=xfce' >> /etc/xrdp/startwm.sh && \
+    echo 'export XDG_CURRENT_DESKTOP=XFCE' >> /etc/xrdp/startwm.sh && \
     echo 'exec startxfce4' >> /etc/xrdp/startwm.sh && \
     chmod +x /etc/xrdp/startwm.sh
+
+# Update supervisord configuration for better logging
+RUN sed -i '/\[program:xrdp-sesman\]/a stdout_logfile=/var/log/xrdp-sesman.log' /etc/supervisord.conf && \
+    sed -i '/\[program:xrdp-sesman\]/a stderr_logfile=/var/log/xrdp-sesman.err' /etc/supervisord.conf && \
+    sed -i '/\[program:xrdp\]/a stdout_logfile=/var/log/xrdp.log' /etc/supervisord.conf && \
+    sed -i '/\[program:xrdp\]/a stderr_logfile=/var/log/xrdp.err' /etc/supervisord.conf && \
+    touch /var/log/xrdp.log /var/log/xrdp.err && \
+    touch /var/log/xrdp-sesman.log /var/log/xrdp-sesman.err && \
+    chown cursor:cursor /var/log/xrdp* && \
+    chmod 644 /var/log/xrdp*
 
 # Create a minimal xorg.conf
 RUN mkdir -p /etc/X11/xrdp && \
