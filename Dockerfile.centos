@@ -55,17 +55,17 @@ RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
     chmod +x /usr/local/bin/chrome-wrapper.sh
 
 # Configure XRDP
-RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
-    sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/crypt_level=high/crypt_level=low/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/use_compression=true/use_compression=false/g' /etc/xrdp/xrdp.ini && \
-    # Remove all existing session configurations
-    sed -i '/\[Xvnc\]/,/^$/d' /etc/xrdp/xrdp.ini && \
-    sed -i '/\[vnc-any\]/,/^$/d' /etc/xrdp/xrdp.ini && \
-    sed -i '/\[neutrinordp-any\]/,/^$/d' /etc/xrdp/xrdp.ini && \
-    # Add Xorg as the only session type
+RUN echo "[Globals]" > /etc/xrdp/xrdp.ini && \
+    echo "ini_version=1" >> /etc/xrdp/xrdp.ini && \
+    echo "fork=true" >> /etc/xrdp/xrdp.ini && \
+    echo "port=3389" >> /etc/xrdp/xrdp.ini && \
+    echo "tcp_nodelay=true" >> /etc/xrdp/xrdp.ini && \
+    echo "tcp_keepalive=true" >> /etc/xrdp/xrdp.ini && \
+    echo "security_layer=rdp" >> /etc/xrdp/xrdp.ini && \
+    echo "crypt_level=low" >> /etc/xrdp/xrdp.ini && \
+    echo "allow_channels=true" >> /etc/xrdp/xrdp.ini && \
+    echo "max_bpp=24" >> /etc/xrdp/xrdp.ini && \
+    echo "bulk_compression=true" >> /etc/xrdp/xrdp.ini && \
     echo "" >> /etc/xrdp/xrdp.ini && \
     echo "[Xorg]" >> /etc/xrdp/xrdp.ini && \
     echo "name=Xorg" >> /etc/xrdp/xrdp.ini && \
@@ -74,7 +74,6 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     echo "password=ask" >> /etc/xrdp/xrdp.ini && \
     echo "ip=127.0.0.1" >> /etc/xrdp/xrdp.ini && \
     echo "port=-1" >> /etc/xrdp/xrdp.ini && \
-    # Configure the default session to use Xorg
     echo "" >> /etc/xrdp/xrdp.ini && \
     echo "[xrdp1]" >> /etc/xrdp/xrdp.ini && \
     echo "name=sesman-Xorg" >> /etc/xrdp/xrdp.ini && \
@@ -93,70 +92,52 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "" >> /etc/xrdp/sesman.ini && \
     echo "[Security]" >> /etc/xrdp/sesman.ini && \
     echo "AllowRootLogin=true" >> /etc/xrdp/sesman.ini && \
-    echo "MaxLoginRetry=4" >> /etc/xrdp/sesman.ini && \
     echo "" >> /etc/xrdp/sesman.ini && \
     echo "[Sessions]" >> /etc/xrdp/sesman.ini && \
     echo "X11DisplayOffset=10" >> /etc/xrdp/sesman.ini && \
     echo "MaxSessions=50" >> /etc/xrdp/sesman.ini && \
-    echo "KillDisconnected=false" >> /etc/xrdp/sesman.ini && \
-    echo "IdleTimeLimit=0" >> /etc/xrdp/sesman.ini && \
-    echo "DisconnectedTimeLimit=0" >> /etc/xrdp/sesman.ini && \
     echo "" >> /etc/xrdp/sesman.ini && \
     echo "[Xorg]" >> /etc/xrdp/sesman.ini && \
-    echo "param=Xorg" >> /etc/xrdp/sesman.ini && \
+    echo "param=/usr/bin/Xorg" >> /etc/xrdp/sesman.ini && \
     echo "param=-config" >> /etc/xrdp/sesman.ini && \
-    echo "param=/etc/X11/xrdp/xorg.conf" >> /etc/xrdp/sesman.ini && \
-    echo "param=-noreset" >> /etc/xrdp/sesman.ini && \
-    echo "param=-nolisten" >> /etc/xrdp/sesman.ini && \
-    echo "param=tcp" >> /etc/xrdp/sesman.ini
+    echo "param=/etc/X11/xrdp/xorg.conf" >> /etc/xrdp/sesman.ini
 
-# Make sure xrdp and sesman logs are properly configured
-RUN sed -i '/\[Logging\]/,/\[/c\[Logging\]\nLogFile=\/var\/log\/xrdp.log\nLogLevel=DEBUG\nEnableSyslog=true\nSyslogLevel=DEBUG' /etc/xrdp/xrdp.ini && \
-    sed -i '/\[Logging\]/,/\[/c\[Logging\]\nLogFile=\/var\/log\/xrdp-sesman.log\nLogLevel=DEBUG\nEnableSyslog=true\nSyslogLevel=DEBUG' /etc/xrdp/sesman.ini
-
-# Create log files with proper permissions
-RUN touch /var/log/xrdp.log /var/log/xrdp.err && \
-    touch /var/log/xrdp-sesman.log /var/log/xrdp-sesman.err && \
-    chown cursor:cursor /var/log/xrdp* && \
-    chmod 644 /var/log/xrdp*
+# Create supervisord config with X server
+RUN echo "[supervisord]" > /etc/supervisord.conf && \
+    echo "nodaemon=true" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    # Add X server first
+    echo "[program:xorg]" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/Xorg :10 -config /etc/X11/xrdp/xorg.conf" >> /etc/supervisord.conf && \
+    echo "user=cursor" >> /etc/supervisord.conf && \
+    echo "priority=1" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    # Then add other services
+    echo "[program:dbus]" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
+    echo "priority=2" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    echo "[program:xrdp-sesman]" >> /etc/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp-sesman --nodaemon" >> /etc/supervisord.conf && \
+    echo "priority=3" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    echo "[program:xrdp]" >> /etc/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp --nodaemon" >> /etc/supervisord.conf && \
+    echo "priority=4" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf
 
 # Create startup script
 RUN echo '#!/bin/bash' > /etc/xrdp/startwm.sh && \
-    echo 'if [ -r /etc/profile ]; then' >> /etc/xrdp/startwm.sh && \
-    echo '    . /etc/profile' >> /etc/xrdp/startwm.sh && \
-    echo 'fi' >> /etc/xrdp/startwm.sh && \
-    echo 'if [ -r $HOME/.profile ]; then' >> /etc/xrdp/startwm.sh && \
-    echo '    . $HOME/.profile' >> /etc/xrdp/startwm.sh && \
-    echo 'fi' >> /etc/xrdp/startwm.sh && \
+    echo 'export DISPLAY=:10' >> /etc/xrdp/startwm.sh && \
+    echo 'export XAUTHORITY=$HOME/.Xauthority' >> /etc/xrdp/startwm.sh && \
     echo 'export XDG_SESSION_TYPE=x11' >> /etc/xrdp/startwm.sh && \
     echo 'export XDG_CURRENT_DESKTOP=XFCE' >> /etc/xrdp/startwm.sh && \
     echo 'export DESKTOP_SESSION=xfce' >> /etc/xrdp/startwm.sh && \
-    echo 'export DISPLAY=:10' >> /etc/xrdp/startwm.sh && \
     echo 'exec startxfce4' >> /etc/xrdp/startwm.sh && \
     chmod +x /etc/xrdp/startwm.sh
-
-# Create a minimal xorg.conf
-RUN mkdir -p /etc/X11/xrdp && \
-    echo 'Section "ServerFlags"' > /etc/X11/xrdp/xorg.conf && \
-    echo '    Option "DontVTSwitch" "true"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Option "AutoAddDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Option "AutoEnableDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
-    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
-    echo 'Section "ServerLayout"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Identifier "Layout0"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Screen "Screen0"' >> /etc/X11/xrdp/xorg.conf && \
-    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
-    echo 'Section "Screen"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Identifier "Screen0"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Device "Card0"' >> /etc/X11/xrdp/xorg.conf && \
-    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
-    chmod 644 /etc/X11/xrdp/xorg.conf
-
-# Ensure proper permissions
-RUN mkdir -p /etc/X11/xrdp && \
-    cp /etc/X11/xorg.conf /etc/X11/xrdp/xorg.conf || touch /etc/X11/xrdp/xorg.conf && \
-    chown -R cursor:cursor /etc/X11/xrdp && \
-    chmod 2775 /etc/X11/xrdp
 
 # Configure XFCE session
 RUN echo "startxfce4" > /home/cursor/.Xclients && \
@@ -168,33 +149,6 @@ RUN mkdir -p /run/dbus && \
     mkdir -p /var/run/dbus && \
     dbus-uuidgen > /var/lib/dbus/machine-id && \
     chown -R cursor:cursor /run/dbus
-
-# Create supervisord config
-RUN echo "[supervisord]" > /etc/supervisord.conf && \
-    echo "nodaemon=true" >> /etc/supervisord.conf && \
-    echo "user=root" >> /etc/supervisord.conf && \
-    echo "" >> /etc/supervisord.conf && \
-    echo "[program:dbus]" >> /etc/supervisord.conf && \
-    echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
-    echo "priority=1" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf && \
-    echo "" >> /etc/supervisord.conf && \
-    echo "[program:xrdp-sesman]" >> /etc/supervisord.conf && \
-    echo "command=/usr/sbin/xrdp-sesman --nodaemon" >> /etc/supervisord.conf && \
-    echo "priority=2" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf && \
-    echo "" >> /etc/supervisord.conf && \
-    echo "[program:xrdp]" >> /etc/supervisord.conf && \
-    echo "command=/usr/sbin/xrdp -n" >> /etc/supervisord.conf && \
-    echo "priority=3" >> /etc/supervisord.conf && \
-    echo "stdout_logfile=/var/log/xrdp.log" >> /etc/supervisord.conf && \
-    echo "stderr_logfile=/var/log/xrdp.err" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf && \
-    sed -i '/\[program:xrdp-sesman\]/a stdout_logfile=/var/log/xrdp-sesman.log' /etc/supervisord.conf && \
-    sed -i '/\[program:xrdp-sesman\]/a stderr_logfile=/var/log/xrdp-sesman.err' /etc/supervisord.conf && \
-    touch /var/log/xrdp-sesman.log && \
-    touch /var/log/xrdp-sesman.err && \
-    chown cursor:cursor /var/log/xrdp-sesman.*
 
 # Configure system for AppImage support
 RUN echo "user_allow_other" >> /etc/fuse.conf && \
@@ -243,33 +197,6 @@ RUN echo "[Desktop Entry]" > /usr/share/applications/chrome-wrapper.desktop && \
 RUN mkdir -p /etc/opt/chrome/policies/managed && \
     echo '{ "AllowInsecureLocalhost": true, "SandboxLinux": false }' > /etc/opt/chrome/policies/managed/policy.json
     
-# After the XFCE installation, add:
-RUN mkdir -p /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml && \
-    echo '<?xml version="1.0" encoding="UTF-8"?>' > /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
-    echo '<channel name="xfce4-session" version="1.0">' >> /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
-    echo '  <property name="SessionName" type="string" value="Default"/>' >> /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
-    echo '</channel>' >> /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
-    chown -R cursor:cursor /home/cursor/.config
-
-# After creating the cursor user, add:
-RUN echo "#!/bin/bash" > /home/cursor/.xsession && \
-    echo "export DESKTOP_SESSION=xfce" >> /home/cursor/.xsession && \
-    echo "export XDG_SESSION_DESKTOP=xfce" >> /home/cursor/.xsession && \
-    echo "export XDG_CURRENT_DESKTOP=XFCE" >> /home/cursor/.xsession && \
-    echo "startxfce4" >> /home/cursor/.xsession && \
-    chmod +x /home/cursor/.xsession && \
-    chown cursor:cursor /home/cursor/.xsession
-
-# Update permissions and configurations for cursor user
-RUN mkdir -p /var/run/xrdp && \
-    chown -R cursor:cursor /var/run/xrdp && \
-    mkdir -p /var/log/xrdp && \
-    chown -R cursor:cursor /var/log/xrdp && \
-    touch /var/log/xrdp.log && \
-    touch /var/log/xrdp.err && \
-    chown cursor:cursor /var/log/xrdp.* && \
-    usermod -aG root cursor
-
 ENV LANG=en_US.UTF-8
 
 # Expose XRDP port
@@ -277,16 +204,3 @@ EXPOSE 3389
 
 # Start supervisord
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
-
-# Update cursor user configuration
-RUN usermod -aG wheel,video,audio cursor && \
-    mkdir -p /home/cursor/.xrdp && \
-    chown -R cursor:cursor /home/cursor/.xrdp && \
-    chmod 700 /home/cursor/.xrdp && \
-    touch /home/cursor/.Xauthority && \
-    chown cursor:cursor /home/cursor/.Xauthority && \
-    chmod 600 /home/cursor/.Xauthority
-
-# Also ensure xrdp-sesman is properly configured for Xorg
-RUN sed -i 's/DefaultWindowManager=startwm.sh/DefaultWindowManager=\/etc\/xrdp\/startwm.sh/' /etc/xrdp/sesman.ini && \
-    sed -i 's/UserWindowManager=startwm.sh/UserWindowManager=\/etc\/xrdp\/startwm.sh/' /etc/xrdp/sesman.ini
