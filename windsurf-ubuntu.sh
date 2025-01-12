@@ -5,7 +5,7 @@ export APPDIR=/usr/local/windsurf
 # Check if a URL parameter was passed
 if [ $# -gt 0 ]; then
     # URL was passed, launch with the URL parameter
-    $APPDIR/windsurf --no-sandbox "$1"
+    $APPDIR/windsurf --no-sandbox --reuse-window "$1"
 else
     # No URL, normal launch
     $APPDIR/windsurf --no-sandbox
