@@ -100,7 +100,15 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "[Xorg]" >> /etc/xrdp/sesman.ini && \
     echo "param=/usr/bin/Xorg" >> /etc/xrdp/sesman.ini && \
     echo "param=-config" >> /etc/xrdp/sesman.ini && \
-    echo "param=/etc/X11/xrdp/xorg.conf" >> /etc/xrdp/sesman.ini
+    echo "param=/etc/X11/xrdp/xorg.conf" >> /etc/xrdp/sesman.ini && \
+    echo "param=-novtswitch" >> /etc/xrdp/sesman.ini && \
+    echo "param=-sharevts" >> /etc/xrdp/sesman.ini && \
+    echo "param=-noreset" >> /etc/xrdp/sesman.ini && \
+    echo "param=-nolisten" >> /etc/xrdp/sesman.ini && \
+    echo "param=tcp" >> /etc/xrdp/sesman.ini && \
+    echo "param=-logfile" >> /etc/xrdp/sesman.ini && \
+    echo "param=/var/log/Xorg.10.log" >> /etc/xrdp/sesman.ini && \
+    echo "param=-ac" >> /etc/xrdp/sesman.ini
 
 # Create supervisord config with X server
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
@@ -108,7 +116,7 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     # Add X server first
     echo "[program:xorg]" >> /etc/supervisord.conf && \
-    echo "command=/usr/bin/Xorg :10 -config /etc/X11/xrdp/xorg.conf" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/Xorg :10 -config /etc/X11/xrdp/xorg.conf -novtswitch -sharevts -noreset -nolisten tcp -logfile /var/log/Xorg.10.log -ac" >> /etc/supervisord.conf && \
     echo "user=cursor" >> /etc/supervisord.conf && \
     echo "priority=1" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
@@ -201,6 +209,48 @@ ENV LANG=en_US.UTF-8
 
 # Expose XRDP port
 EXPOSE 3389
+
+# Create proper xorg.conf for container environment
+RUN mkdir -p /etc/X11/xrdp && \
+    echo 'Section "ServerFlags"' > /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "DontVTSwitch" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoAddDevices" "false"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoEnableDevices" "false"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "DontZap" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "IgnoreABI" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AllowMouseOpenFail" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "PciForceNone" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoEnableDevices" "false"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoAddDevices" "false"' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
+    echo '' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'Section "Device"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Identifier "dummy_videocard"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Driver "dummy"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "ConstantDPI" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    VideoRam 256000' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
+    echo '' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'Section "Monitor"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Identifier "dummy_monitor"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    HorizSync 5.0-1000.0' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    VertRefresh 5.0-200.0' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
+    echo '' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'Section "Screen"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Identifier "dummy_screen"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Device "dummy_videocard"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Monitor "dummy_monitor"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    DefaultDepth 24' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    SubSection "Display"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '        Depth 24' >> /etc/X11/xrdp/xorg.conf && \
+    echo '        Modes "1024x768"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '        Virtual 1024 768' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    EndSubSection' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf
+
+# Ensure proper permissions
+RUN chmod 644 /etc/X11/xrdp/xorg.conf
 
 # Start supervisord
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
