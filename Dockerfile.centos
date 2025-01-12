@@ -35,6 +35,14 @@ COPY google-chrome.repo /etc/yum.repos.d/
 RUN yum install -y --skip-broken google-chrome-stable
 # echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/chrome-libs.sh
 
+# Download and install Cursor
+RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
+    chmod +x /tmp/cursor.app && \
+    /tmp/cursor.app --appimage-extract && \
+    mv squashfs-root /usr/local/cursor && \
+    chown -R cursor:cursor /usr/local/cursor && \
+    rm /tmp/cursor.app
+
 # Create Chrome wrapper script
 RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
     echo 'LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH exec /usr/bin/google-chrome "$@"' >> /usr/local/bin/chrome-wrapper.sh && \
@@ -54,10 +62,45 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     echo "bulk_compression=true" >> /etc/xrdp/xrdp.ini
 
 # Configure XRDP session settings
-RUN echo "[Xorg]" > /etc/xrdp/sesman.ini && \
+RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
+    echo "ListenAddress=127.0.0.1" >> /etc/xrdp/sesman.ini && \
+    echo "EnableUserWindowManager=true" >> /etc/xrdp/sesman.ini && \
+    echo "UserWindowManager=startwm.sh" >> /etc/xrdp/sesman.ini && \
+    echo "DefaultWindowManager=startwm.sh" >> /etc/xrdp/sesman.ini && \
+    echo "" >> /etc/xrdp/sesman.ini && \
+    echo "[Security]" >> /etc/xrdp/sesman.ini && \
+    echo "AllowRootLogin=true" >> /etc/xrdp/sesman.ini && \
+    echo "MaxLoginRetry=4" >> /etc/xrdp/sesman.ini && \
+    echo "" >> /etc/xrdp/sesman.ini && \
+    echo "[Sessions]" >> /etc/xrdp/sesman.ini && \
+    echo "X11DisplayOffset=10" >> /etc/xrdp/sesman.ini && \
+    echo "MaxSessions=50" >> /etc/xrdp/sesman.ini && \
+    echo "KillDisconnected=false" >> /etc/xrdp/sesman.ini && \
+    echo "IdleTimeLimit=0" >> /etc/xrdp/sesman.ini && \
+    echo "DisconnectedTimeLimit=0" >> /etc/xrdp/sesman.ini && \
+    echo "" >> /etc/xrdp/sesman.ini && \
+    echo "[Xorg]" >> /etc/xrdp/sesman.ini && \
     echo "param=Xorg" >> /etc/xrdp/sesman.ini && \
-    echo "allowed_users=cursor" >> /etc/xrdp/sesman.ini && \
-    echo "user_allowed=cursor" >> /etc/xrdp/sesman.ini
+    echo "param=-config" >> /etc/xrdp/sesman.ini && \
+    echo "param=/etc/X11/xrdp/xorg.conf" >> /etc/xrdp/sesman.ini && \
+    echo "param=-noreset" >> /etc/xrdp/sesman.ini && \
+    echo "param=-nolisten" >> /etc/xrdp/sesman.ini && \
+    echo "param=tcp" >> /etc/xrdp/sesman.ini
+
+# Create startup script
+RUN echo "#!/bin/bash" > /etc/xrdp/startwm.sh && \
+    echo "export LANG=en_US.UTF-8" >> /etc/xrdp/startwm.sh && \
+    echo "export DESKTOP_SESSION=xfce" >> /etc/xrdp/startwm.sh && \
+    echo "export XDG_SESSION_DESKTOP=xfce" >> /etc/xrdp/startwm.sh && \
+    echo "export XDG_CURRENT_DESKTOP=XFCE" >> /etc/xrdp/startwm.sh && \
+    echo "startxfce4" >> /etc/xrdp/startwm.sh && \
+    chmod +x /etc/xrdp/startwm.sh
+
+# Ensure proper permissions
+RUN mkdir -p /etc/X11/xrdp && \
+    cp /etc/X11/xorg.conf /etc/X11/xrdp/xorg.conf || touch /etc/X11/xrdp/xorg.conf && \
+    chown -R cursor:cursor /etc/X11/xrdp && \
+    chmod 2775 /etc/X11/xrdp
 
 # Create cursor user
 RUN useradd -m -s /bin/bash cursor && \
@@ -96,20 +139,16 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "priority=3" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/var/log/xrdp.log" >> /etc/supervisord.conf && \
     echo "stderr_logfile=/var/log/xrdp.err" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf
+    echo "autorestart=true" >> /etc/supervisord.conf && \
+    sed -i '/\[program:xrdp-sesman\]/a stdout_logfile=/var/log/xrdp-sesman.log' /etc/supervisord.conf && \
+    sed -i '/\[program:xrdp-sesman\]/a stderr_logfile=/var/log/xrdp-sesman.err' /etc/supervisord.conf && \
+    touch /var/log/xrdp-sesman.log && \
+    touch /var/log/xrdp-sesman.err && \
+    chown cursor:cursor /var/log/xrdp-sesman.*
 
 # Configure system for AppImage support
 RUN echo "user_allow_other" >> /etc/fuse.conf && \
     modprobe fuse || true
-
-
-# Download and install Cursor
-RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
-    chmod +x /tmp/cursor.app && \
-    /tmp/cursor.app --appimage-extract && \
-    mv squashfs-root /usr/local/cursor && \
-    chown -R cursor:cursor /usr/local/cursor && \
-    rm /tmp/cursor.app
 
 # Set environment variables
 ENV APPDIR=/usr/local/cursor
@@ -188,3 +227,12 @@ EXPOSE 3389
 
 # Start supervisord
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+
+# Update cursor user configuration
+RUN usermod -aG wheel,video,audio cursor && \
+    mkdir -p /home/cursor/.xrdp && \
+    chown -R cursor:cursor /home/cursor/.xrdp && \
+    chmod 700 /home/cursor/.xrdp && \
+    touch /home/cursor/.Xauthority && \
+    chown cursor:cursor /home/cursor/.Xauthority && \
+    chmod 600 /home/cursor/.Xauthority
