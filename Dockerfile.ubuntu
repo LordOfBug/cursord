@@ -43,8 +43,6 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     apt install -y google-chrome-stable && \
     apt clean && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /etc/opt/chrome/policies/managed && \
-    echo '{"CommandLineFlagSecurityWarningsEnabled": false, "DefaultBrowserSettingEnabled": false}' > /etc/opt/chrome/policies/managed/managed_policies.json && \
     echo '#!/bin/bash' > /usr/bin/google-chrome-stable && \
     echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type "$@"' >> /usr/bin/google-chrome-stable && \
     chmod +x /usr/bin/google-chrome-stable && \
