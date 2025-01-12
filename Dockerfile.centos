@@ -32,8 +32,8 @@ RUN yum install -y epel-release && \
 COPY google-chrome.repo /etc/yum.repos.d/
 
 # Install Chrome with custom library path, ignoring dependencies
-RUN yum install -y --skip-broken google-chrome-stable && \
-    echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/chrome-libs.sh
+RUN yum install -y --skip-broken google-chrome-stable
+# echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/chrome-libs.sh
 
 # Create Chrome wrapper script
 RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
