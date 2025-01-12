@@ -66,6 +66,8 @@ RUN echo "[Globals]" > /etc/xrdp/xrdp.ini && \
     echo "allow_channels=true" >> /etc/xrdp/xrdp.ini && \
     echo "max_bpp=24" >> /etc/xrdp/xrdp.ini && \
     echo "bulk_compression=true" >> /etc/xrdp/xrdp.ini && \
+    echo "LogFile=/var/log/xrdp.log" >> /etc/xrdp/xrdp.ini && \
+    echo "LogLevel=DEBUG" >> /etc/xrdp/xrdp.ini && \
     echo "" >> /etc/xrdp/xrdp.ini && \
     echo "[Xorg]" >> /etc/xrdp/xrdp.ini && \
     echo "name=Xorg" >> /etc/xrdp/xrdp.ini && \
@@ -251,6 +253,22 @@ RUN mkdir -p /etc/X11/xrdp && \
 
 # Ensure proper permissions
 RUN chmod 644 /etc/X11/xrdp/xorg.conf
+
+# Create log files with proper permissions
+RUN touch /var/log/xrdp.log /var/log/xrdp-sesman.log /var/log/Xorg.10.log && \
+    chown cursor:cursor /var/log/xrdp.log /var/log/xrdp-sesman.log /var/log/Xorg.10.log && \
+    chmod 644 /var/log/xrdp.log /var/log/xrdp-sesman.log /var/log/Xorg.10.log
+
+# Update supervisord X server configuration
+RUN sed -i 's|\[program:xorg\]|\[program:xorg\]\ndirectory=/home/cursor\nenvironment=HOME="/home/cursor",USER="cursor"\numask=022|' /etc/supervisord.conf && \
+    mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    chown cursor:cursor /tmp/.X11-unix
+
+# Add cursor user to required groups
+RUN usermod -aG tty,video,root cursor && \
+    mkdir -p /home/cursor/.cache && \
+    chown -R cursor:cursor /home/cursor/.cache
 
 # Start supervisord
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
