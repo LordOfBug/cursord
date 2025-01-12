@@ -44,10 +44,20 @@ RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
 RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/crypt_level=high/crypt_level=none/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/crypt_level=high/crypt_level=low/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
-    echo "[Xvnc]" > /etc/xrdp/sesman.ini && \
-    echo "param=Xvnc -bs -ac -nolisten tcp -localhost -dpi 96" >> /etc/xrdp/sesman.ini
+    sed -i 's/use_compression=true/use_compression=false/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/FuseMountName=thinclient_drives/FuseMountName=remote_drives/g' /etc/xrdp/xrdp.ini && \
+    echo "enable_dynamic_channels=false" >> /etc/xrdp/xrdp.ini && \
+    echo "allow_channels=true" >> /etc/xrdp/xrdp.ini && \
+    echo "tcp_nodelay=true" >> /etc/xrdp/xrdp.ini && \
+    echo "bulk_compression=true" >> /etc/xrdp/xrdp.ini
+
+# Configure XRDP session settings
+RUN echo "[Xorg]" > /etc/xrdp/sesman.ini && \
+    echo "param=Xorg" >> /etc/xrdp/sesman.ini && \
+    echo "allowed_users=cursor" >> /etc/xrdp/sesman.ini && \
+    echo "user_allowed=cursor" >> /etc/xrdp/sesman.ini
 
 # Create cursor user
 RUN useradd -m -s /bin/bash cursor && \
@@ -69,17 +79,21 @@ RUN mkdir -p /run/dbus && \
 # Create supervisord config
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
+    echo "user=root" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:dbus]" >> /etc/supervisord.conf && \
     echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
+    echo "priority=1" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp-sesman]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman --nodaemon" >> /etc/supervisord.conf && \
+    echo "priority=2" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp -n" >> /etc/supervisord.conf && \
+    echo "priority=3" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/var/log/xrdp.log" >> /etc/supervisord.conf && \
     echo "stderr_logfile=/var/log/xrdp.err" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf
@@ -156,6 +170,16 @@ RUN echo "#!/bin/bash" > /home/cursor/.xsession && \
     echo "startxfce4" >> /home/cursor/.xsession && \
     chmod +x /home/cursor/.xsession && \
     chown cursor:cursor /home/cursor/.xsession
+
+# Update permissions and configurations for cursor user
+RUN mkdir -p /var/run/xrdp && \
+    chown -R cursor:cursor /var/run/xrdp && \
+    mkdir -p /var/log/xrdp && \
+    chown -R cursor:cursor /var/log/xrdp && \
+    touch /var/log/xrdp.log && \
+    touch /var/log/xrdp.err && \
+    chown cursor:cursor /var/log/xrdp.* && \
+    usermod -aG root cursor
 
 ENV LANG=en_US.UTF-8
 
