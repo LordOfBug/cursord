@@ -112,18 +112,38 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "param=/var/log/Xorg.10.log" >> /etc/xrdp/sesman.ini && \
     echo "param=-ac" >> /etc/xrdp/sesman.ini
 
-# Create supervisord config with X server
-RUN echo "[supervisord]" > /etc/supervisord.conf && \
-    echo "nodaemon=true" >> /etc/supervisord.conf && \
+# Create supervisord config with proper settings
+RUN echo "[unix_http_server]" > /etc/supervisord.conf && \
+    echo "file=/var/run/supervisor.sock" >> /etc/supervisord.conf && \
+    echo "chmod=0700" >> /etc/supervisord.conf && \
+    echo "chown=root:root" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
-    # Add X server first
+    echo "[supervisord]" >> /etc/supervisord.conf && \
+    echo "logfile=/var/log/supervisord.log" >> /etc/supervisord.conf && \
+    echo "loglevel=debug" >> /etc/supervisord.conf && \
+    echo "pidfile=/var/run/supervisord.pid" >> /etc/supervisord.conf && \
+    echo "nodaemon=true" >> /etc/supervisord.conf && \
+    echo "minfds=1024" >> /etc/supervisord.conf && \
+    echo "minprocs=200" >> /etc/supervisord.conf && \
+    echo "umask=022" >> /etc/supervisord.conf && \
+    echo "user=root" >> /etc/supervisord.conf && \
+    echo "identifier=supervisor" >> /etc/supervisord.conf && \
+    echo "directory=/tmp" >> /etc/supervisord.conf && \
+    echo "nocleanup=true" >> /etc/supervisord.conf && \
+    echo "childlogdir=/var/log" >> /etc/supervisord.conf && \
+    echo "strip_ansi=false" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
     echo "[program:xorg]" >> /etc/supervisord.conf && \
     echo "command=/usr/bin/Xorg :10 -config /etc/X11/xrdp/xorg.conf -novtswitch -sharevts -noreset -nolisten tcp -logfile /var/log/Xorg.10.log -ac" >> /etc/supervisord.conf && \
     echo "user=cursor" >> /etc/supervisord.conf && \
+    echo "directory=/home/cursor" >> /etc/supervisord.conf && \
+    echo "environment=HOME=/home/cursor,USER=cursor,DISPLAY=:10,XAUTHORITY=/home/cursor/.Xauthority" >> /etc/supervisord.conf && \
+    echo "stdout_logfile=/var/log/supervisor_xorg.log" >> /etc/supervisord.conf && \
+    echo "stderr_logfile=/var/log/supervisor_xorg.err" >> /etc/supervisord.conf && \
     echo "priority=1" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "startretries=0" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
-    # Then add other services
     echo "[program:dbus]" >> /etc/supervisord.conf && \
     echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
     echo "priority=2" >> /etc/supervisord.conf && \
@@ -259,11 +279,21 @@ RUN touch /var/log/xrdp.log /var/log/xrdp-sesman.log /var/log/Xorg.10.log && \
     chown cursor:cursor /var/log/xrdp.log /var/log/xrdp-sesman.log /var/log/Xorg.10.log && \
     chmod 644 /var/log/xrdp.log /var/log/xrdp-sesman.log /var/log/Xorg.10.log
 
-# Update supervisord X server configuration
-RUN sed -i 's|\[program:xorg\]|\[program:xorg\]\ndirectory=/home/cursor\nenvironment=HOME="/home/cursor",USER="cursor"\numask=022|' /etc/supervisord.conf && \
-    mkdir -p /tmp/.X11-unix && \
-    chmod 1777 /tmp/.X11-unix && \
-    chown cursor:cursor /tmp/.X11-unix
+# Update supervisord X server configuration with more detailed settings
+RUN sed -i '/\[program:xorg\]/,/autorestart=true/c\[program:xorg]\ncommand=/usr/bin/Xorg :10 -config /etc/X11/xrdp/xorg.conf -novtswitch -sharevts -noreset -nolisten tcp -logfile /var/log/Xorg.10.log -ac\nuser=cursor\npriority=1\nautorestart=true\ndirectory=/home/cursor\nenvironment=HOME="/home/cursor",USER="cursor",DISPLAY=":10",XAUTHORITY="/home/cursor/.Xauthority"\nstdout_logfile=/var/log/supervisor_xorg.log\nstderr_logfile=/var/log/supervisor_xorg.err\nstartretries=0' /etc/supervisord.conf
+
+# Create .Xauthority file
+RUN touch /home/cursor/.Xauthority && \
+    chown cursor:cursor /home/cursor/.Xauthority && \
+    chmod 600 /home/cursor/.Xauthority
+
+# Create supervisor log files
+RUN touch /var/log/supervisor_xorg.log /var/log/supervisor_xorg.err && \
+    chown cursor:cursor /var/log/supervisor_xorg.* && \
+    chmod 644 /var/log/supervisor_xorg.*
+
+# Update supervisord main config
+RUN sed -i '1i[unix_http_server]\nfile=/var/run/supervisor.sock\nchmod=0700\nchown=root:root\n\n[supervisord]\nlogfile=/var/log/supervisord.log\nloglevel=debug\npidfile=/var/run/supervisord.pid\nnodaemon=true\nminfds=1024\nminprocs=200\numask=022\nuser=root\nidentifier=supervisor\ndirectory=/tmp\nnocleanup=true\nchildlogdir=/var/log\nstrip_ansi=false\n' /etc/supervisord.conf
 
 # Add cursor user to required groups
 RUN usermod -aG tty,video,root cursor && \
