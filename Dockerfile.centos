@@ -44,7 +44,10 @@ RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
 RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
-    systemctl enable xrdp
+    sed -i 's/crypt_level=high/crypt_level=none/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
+    echo "[Xvnc]" > /etc/xrdp/sesman.ini && \
+    echo "param=Xvnc -bs -ac -nolisten tcp -localhost -dpi 96" >> /etc/xrdp/sesman.ini
 
 # Create cursor user
 RUN useradd -m -s /bin/bash cursor && \
@@ -76,7 +79,9 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp]" >> /etc/supervisord.conf && \
-    echo "command=/usr/sbin/xrdp --nodaemon" >> /etc/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp -n" >> /etc/supervisord.conf && \
+    echo "stdout_logfile=/var/log/xrdp.log" >> /etc/supervisord.conf && \
+    echo "stderr_logfile=/var/log/xrdp.err" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf
 
 # Configure system for AppImage support
@@ -135,6 +140,23 @@ RUN echo "[Desktop Entry]" > /usr/share/applications/chrome-wrapper.desktop && \
 RUN mkdir -p /etc/opt/chrome/policies/managed && \
     echo '{ "AllowInsecureLocalhost": true, "SandboxLinux": false }' > /etc/opt/chrome/policies/managed/policy.json
     
+# After the XFCE installation, add:
+RUN mkdir -p /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml && \
+    echo '<?xml version="1.0" encoding="UTF-8"?>' > /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '<channel name="xfce4-session" version="1.0">' >> /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '  <property name="SessionName" type="string" value="Default"/>' >> /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '</channel>' >> /home/cursor/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    chown -R cursor:cursor /home/cursor/.config
+
+# After creating the cursor user, add:
+RUN echo "#!/bin/bash" > /home/cursor/.xsession && \
+    echo "export DESKTOP_SESSION=xfce" >> /home/cursor/.xsession && \
+    echo "export XDG_SESSION_DESKTOP=xfce" >> /home/cursor/.xsession && \
+    echo "export XDG_CURRENT_DESKTOP=XFCE" >> /home/cursor/.xsession && \
+    echo "startxfce4" >> /home/cursor/.xsession && \
+    chmod +x /home/cursor/.xsession && \
+    chown cursor:cursor /home/cursor/.xsession
+
 ENV LANG=en_US.UTF-8
 
 # Expose XRDP port
