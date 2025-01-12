@@ -41,7 +41,7 @@ jobs:
           context: .
           file: ./Dockerfile.ubuntu
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cursord:ubuntu
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/AIEditor:ubuntu
           cache-from: type=gha,scope=ubuntu-desktop
           cache-to: type=gha,mode=max,scope=ubuntu-desktop
 

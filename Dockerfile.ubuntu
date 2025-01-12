@@ -60,12 +60,12 @@ RUN adduser xrdp ssl-cert && \
     sed -i 's/xserverbpp=24/xserverbpp=128/g' /etc/xrdp/xrdp.ini && \
     echo "xfce4-session" > /root/.xsession
 
-# Create cursor user
-RUN useradd -m -s /bin/bash cursor && \
-    echo "cursor ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    echo "cursor:cursor" | chpasswd && \
-    cp /root/.xsession /home/cursor/.xsession && \
-    chown cursor:cursor /home/cursor/.xsession
+# Create user
+RUN useradd -m -s /bin/bash coder && \
+    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    echo "coder:coder" | chpasswd && \
+    cp /root/.xsession /home/coder/.xsession && \
+    chown coder:coder /home/coder/.xsession
 
 # Set up supervisord configuration
 RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
@@ -84,28 +84,49 @@ RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
     chmod +x /tmp/cursor.app && \
     /tmp/cursor.app --appimage-extract && \
     mv squashfs-root /usr/local/cursor && \
-    chown -R cursor:cursor /usr/local/cursor && \
+    chown -R coder:coder /usr/local/cursor && \
     rm /tmp/cursor.app
-
-# Set environment variables
-ENV APPDIR=/usr/local/cursor
 
 # Copy cursor startup script
 COPY cursor-ubuntu.sh /bin/cursor.sh
 RUN chmod +x /bin/cursor.sh && \
-    chown cursor:cursor /bin/cursor.sh
+    chown coder:coder /bin/cursor.sh
 
 # Create desktop shortcut for Cursor
-RUN mkdir -p /home/cursor/Desktop && \
-    echo "[Desktop Entry]" > /home/cursor/Desktop/cursor.desktop && \
-    echo "Name=Cursor" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Exec=/bin/cursor.sh" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Terminal=false" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Type=Application" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Categories=Development;" >> /home/cursor/Desktop/cursor.desktop && \
-    chmod +x /home/cursor/Desktop/cursor.desktop && \
-    chown -R cursor:cursor /home/cursor/Desktop
+RUN mkdir -p /home/coder/Desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/cursor.desktop && \
+    echo "Name=Cursor" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Exec=/bin/cursor.sh" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Categories=Development;" >> /home/coder/Desktop/cursor.desktop && \
+    chmod +x /home/coder/Desktop/cursor.desktop && \
+    chown -R coder:coder /home/coder/Desktop
+
+# Install windsurf
+RUN wget -O /tmp/windsurf.tar.gz https://windsurf-stable.codeiumdata.com/linux-x64/stable/c1abda616a165bf765ae3b6a1f24853111619338/Windsurf-linux-x64-1.1.3.tar.gz && \
+    tar -xzvf /tmp/windsurf.tar.gz && \
+    mv Windsurf /usr/local/windsurf && \
+    chown -R coder:coder /usr/local/windsurf && \
+    rm /tmp/windsurf.tar.gz
+
+# Copy windsurf startup script
+COPY windsurf-ubuntu.sh /bin/windsurf.sh
+RUN chmod +x /bin/windsurf.sh && \
+    chown coder:coder /bin/windsurf.sh
+
+# Create desktop shortcut for Windsurf
+RUN mkdir -p /home/coder/Desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/windsurf.desktop && \
+    echo "Name=Windsurf" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Exec=/bin/windsurf.sh" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Icon=/usr/local/windsurf/resources/app/resources/linux/code.png" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Categories=Development;" >> /home/coder/Desktop/windsurf.desktop && \
+    chmod +x /home/coder/Desktop/windsurf.desktop && \
+    chown -R coder:coder /home/coder/Desktop
 
 # Expose XRDP port
 EXPOSE 3389
