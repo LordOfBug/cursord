@@ -61,8 +61,19 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/crypt_level=high/crypt_level=low/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/use_compression=true/use_compression=false/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/lib\/xrdp\/sesman_Xvnc/lib\/xrdp\/sesman_Xorg/g' /etc/xrdp/xrdp.ini && \
-    sed -i '/^\[Xorg\]/,/^\[/d' /etc/xrdp/xrdp.ini && \
+    sed -i '/\[Globals\]/,/\[/d' /etc/xrdp/xrdp.ini && \
+    echo "[Globals]" > /etc/xrdp/xrdp.ini.tmp && \
+    echo "bitmap_cache=yes" >> /etc/xrdp/xrdp.ini.tmp && \
+    echo "bitmap_compression=no" >> /etc/xrdp/xrdp.ini.tmp && \
+    echo "port=3389" >> /etc/xrdp/xrdp.ini.tmp && \
+    echo "crypt_level=low" >> /etc/xrdp/xrdp.ini.tmp && \
+    echo "channel_code=1" >> /etc/xrdp/xrdp.ini.tmp && \
+    echo "max_bpp=24" >> /etc/xrdp/xrdp.ini.tmp && \
+    echo "" >> /etc/xrdp/xrdp.ini.tmp && \
+    cat /etc/xrdp/xrdp.ini >> /etc/xrdp/xrdp.ini.tmp && \
+    mv /etc/xrdp/xrdp.ini.tmp /etc/xrdp/xrdp.ini && \
+    sed -i '/\[Xorg\]/,/\[/d' /etc/xrdp/xrdp.ini && \
+    echo "" >> /etc/xrdp/xrdp.ini && \
     echo "[Xorg]" >> /etc/xrdp/xrdp.ini && \
     echo "name=Xorg" >> /etc/xrdp/xrdp.ini && \
     echo "lib=libxup.so" >> /etc/xrdp/xrdp.ini && \
@@ -70,7 +81,19 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     echo "password=ask" >> /etc/xrdp/xrdp.ini && \
     echo "ip=127.0.0.1" >> /etc/xrdp/xrdp.ini && \
     echo "port=-1" >> /etc/xrdp/xrdp.ini && \
-    echo "code=20" >> /etc/xrdp/xrdp.ini
+    echo "code=20" >> /etc/xrdp/xrdp.ini && \
+    sed -i '/\[vnc\]/,/\[/d' /etc/xrdp/xrdp.ini && \
+    sed -i 's/^\[xrdp1\]/;\[xrdp1\]/' /etc/xrdp/xrdp.ini && \
+    sed -i 's/^name=sesman-Xvnc/;name=sesman-Xvnc/' /etc/xrdp/xrdp.ini && \
+    sed -i 's/^lib=libvnc.so/;lib=libvnc.so/' /etc/xrdp/xrdp.ini && \
+    echo "" >> /etc/xrdp/xrdp.ini && \
+    echo "[xrdp1]" >> /etc/xrdp/xrdp.ini && \
+    echo "name=sesman-Xorg" >> /etc/xrdp/xrdp.ini && \
+    echo "lib=libxup.so" >> /etc/xrdp/xrdp.ini && \
+    echo "username=ask" >> /etc/xrdp/xrdp.ini && \
+    echo "password=ask" >> /etc/xrdp/xrdp.ini && \
+    echo "ip=127.0.0.1" >> /etc/xrdp/xrdp.ini && \
+    echo "port=-1" >> /etc/xrdp/xrdp.ini
 
 # Configure XRDP session settings
 RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
@@ -264,3 +287,7 @@ RUN usermod -aG wheel,video,audio cursor && \
     touch /home/cursor/.Xauthority && \
     chown cursor:cursor /home/cursor/.Xauthority && \
     chmod 600 /home/cursor/.Xauthority
+
+# Also ensure xrdp-sesman is properly configured for Xorg
+RUN sed -i 's/DefaultWindowManager=startwm.sh/DefaultWindowManager=\/etc\/xrdp\/startwm.sh/' /etc/xrdp/sesman.ini && \
+    sed -i 's/UserWindowManager=startwm.sh/UserWindowManager=\/etc\/xrdp\/startwm.sh/' /etc/xrdp/sesman.ini
