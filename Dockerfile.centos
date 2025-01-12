@@ -35,6 +35,12 @@ COPY google-chrome.repo /etc/yum.repos.d/
 RUN yum install -y --skip-broken google-chrome-stable
 # echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/chrome-libs.sh
 
+# Create cursor user
+RUN useradd -m -s /bin/bash cursor && \
+    echo "cursor ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    echo "cursor:cursor" | chpasswd && \
+    usermod -aG wheel cursor
+
 # Download and install Cursor
 RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
     chmod +x /tmp/cursor.app && \
@@ -101,12 +107,6 @@ RUN mkdir -p /etc/X11/xrdp && \
     cp /etc/X11/xorg.conf /etc/X11/xrdp/xorg.conf || touch /etc/X11/xrdp/xorg.conf && \
     chown -R cursor:cursor /etc/X11/xrdp && \
     chmod 2775 /etc/X11/xrdp
-
-# Create cursor user
-RUN useradd -m -s /bin/bash cursor && \
-    echo "cursor ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    echo "cursor:cursor" | chpasswd && \
-    usermod -aG wheel cursor
 
 # Configure XFCE session
 RUN echo "startxfce4" > /home/cursor/.Xclients && \
