@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install essential dependencies
 RUN apt update && apt install -y \
+    vim \
     wget \
     sudo \
     xorg \
