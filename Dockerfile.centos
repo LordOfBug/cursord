@@ -61,11 +61,16 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/crypt_level=high/crypt_level=low/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/use_compression=true/use_compression=false/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/FuseMountName=thinclient_drives/FuseMountName=remote_drives/g' /etc/xrdp/xrdp.ini && \
-    echo "enable_dynamic_channels=false" >> /etc/xrdp/xrdp.ini && \
-    echo "allow_channels=true" >> /etc/xrdp/xrdp.ini && \
-    echo "tcp_nodelay=true" >> /etc/xrdp/xrdp.ini && \
-    echo "bulk_compression=true" >> /etc/xrdp/xrdp.ini
+    sed -i 's/lib\/xrdp\/sesman_Xvnc/lib\/xrdp\/sesman_Xorg/g' /etc/xrdp/xrdp.ini && \
+    sed -i '/^\[Xorg\]/,/^\[/d' /etc/xrdp/xrdp.ini && \
+    echo "[Xorg]" >> /etc/xrdp/xrdp.ini && \
+    echo "name=Xorg" >> /etc/xrdp/xrdp.ini && \
+    echo "lib=libxup.so" >> /etc/xrdp/xrdp.ini && \
+    echo "username=ask" >> /etc/xrdp/xrdp.ini && \
+    echo "password=ask" >> /etc/xrdp/xrdp.ini && \
+    echo "ip=127.0.0.1" >> /etc/xrdp/xrdp.ini && \
+    echo "port=-1" >> /etc/xrdp/xrdp.ini && \
+    echo "code=20" >> /etc/xrdp/xrdp.ini
 
 # Configure XRDP session settings
 RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
@@ -94,13 +99,36 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "param=tcp" >> /etc/xrdp/sesman.ini
 
 # Create startup script
-RUN echo "#!/bin/bash" > /etc/xrdp/startwm.sh && \
-    echo "export LANG=en_US.UTF-8" >> /etc/xrdp/startwm.sh && \
-    echo "export DESKTOP_SESSION=xfce" >> /etc/xrdp/startwm.sh && \
-    echo "export XDG_SESSION_DESKTOP=xfce" >> /etc/xrdp/startwm.sh && \
-    echo "export XDG_CURRENT_DESKTOP=XFCE" >> /etc/xrdp/startwm.sh && \
-    echo "startxfce4" >> /etc/xrdp/startwm.sh && \
+RUN echo '#!/bin/bash' > /etc/xrdp/startwm.sh && \
+    echo 'if [ -r /etc/profile ]; then' >> /etc/xrdp/startwm.sh && \
+    echo '    . /etc/profile' >> /etc/xrdp/startwm.sh && \
+    echo 'fi' >> /etc/xrdp/startwm.sh && \
+    echo 'if [ -r $HOME/.profile ]; then' >> /etc/xrdp/startwm.sh && \
+    echo '    . $HOME/.profile' >> /etc/xrdp/startwm.sh && \
+    echo 'fi' >> /etc/xrdp/startwm.sh && \
+    echo 'export XDG_SESSION_TYPE=x11' >> /etc/xrdp/startwm.sh && \
+    echo 'export XDG_CURRENT_DESKTOP=XFCE' >> /etc/xrdp/startwm.sh && \
+    echo 'export DESKTOP_SESSION=xfce' >> /etc/xrdp/startwm.sh && \
+    echo 'export DISPLAY=:10' >> /etc/xrdp/startwm.sh && \
+    echo 'exec startxfce4' >> /etc/xrdp/startwm.sh && \
     chmod +x /etc/xrdp/startwm.sh
+
+# Create a minimal xorg.conf
+RUN mkdir -p /etc/X11/xrdp && \
+    echo 'Section "ServerFlags"' > /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "DontVTSwitch" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoAddDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoEnableDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'Section "ServerLayout"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Identifier "Layout0"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Screen "Screen0"' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'Section "Screen"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Identifier "Screen0"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Device "Card0"' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
+    chmod 644 /etc/X11/xrdp/xorg.conf
 
 # Ensure proper permissions
 RUN mkdir -p /etc/X11/xrdp && \
