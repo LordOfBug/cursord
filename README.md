@@ -13,14 +13,14 @@ The prebuild version is availabe on docker hub as [buglord/cursord:latest](https
 
 ### Latest Update
 On Mac, XQuartz is slow so I decided to build the full desktop version with Ubuntu
-- Desktop version: [buglord/AIEditor:ubuntu](https://hub.docker.com/r/buglord/AIEditor)
+- Desktop version: [buglord/cursord:ubuntu](https://hub.docker.com/r/buglord/cursord)
 
 1. Start the container
    ```bash
-   docker run -d -p 3389:3389 buglord/AIEditor:ubuntu
+   docker run -d -p 3389:3389 buglord/cursord:ubuntu
    ```
 
-2. Use your remote desktop to connect to 3389 port. That's all
+2. Use your remote desktop to connect to 3389 port. use coder:coder to login, that's all
 
 
 ## How to run on MacOS
