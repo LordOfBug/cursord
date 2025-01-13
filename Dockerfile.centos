@@ -43,6 +43,20 @@ COPY google-chrome.repo /etc/yum.repos.d/
 RUN yum install -y --skip-broken google-chrome-stable
 # echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/chrome-libs.sh
 
+# Create coder user
+RUN useradd -m -s /bin/bash coder && \
+    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    echo "coder:coder" | chpasswd && \
+    usermod -aG wheel coder
+
+# Download and install Cursor
+RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
+    chmod +x /tmp/cursor.app && \
+    /tmp/cursor.app --appimage-extract && \
+    mv squashfs-root /usr/local/cursor && \
+    chown -R coder:coder /usr/local/cursor && \
+    rm /tmp/cursor.app
+
 # Create Chrome wrapper script
 RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
     echo 'LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH exec /usr/bin/google-chrome "$@"' >> /usr/local/bin/chrome-wrapper.sh && \
@@ -52,13 +66,44 @@ RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
 RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
-    systemctl enable xrdp
+    sed -i 's/crypt_level=high/crypt_level=none/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
+    systemctl enable xrdp && \
+    echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
 
-# Create coder user
-RUN useradd -m -s /bin/bash coder && \
-    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    echo "coder:coder" | chpasswd && \
-    usermod -aG wheel coder
+# Create sesman config
+RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
+    echo "ListenAddress=127.0.0.1" >> /etc/xrdp/sesman.ini && \
+    echo "ListenPort=3350" >> /etc/xrdp/sesman.ini && \
+    echo "EnableUserWindowManager=true" >> /etc/xrdp/sesman.ini && \
+    echo "UserWindowManager=startwm.sh" >> /etc/xrdp/sesman.ini && \
+    echo "DefaultWindowManager=startwm.sh" >> /etc/xrdp/sesman.ini && \
+    echo "" >> /etc/xrdp/sesman.ini && \
+    echo "[Security]" >> /etc/xrdp/sesman.ini && \
+    echo "AllowRootLogin=true" >> /etc/xrdp/sesman.ini && \
+    echo "MaxLoginRetry=4" >> /etc/xrdp/sesman.ini && \
+    echo "" >> /etc/xrdp/sesman.ini && \
+    echo "[Sessions]" >> /etc/xrdp/sesman.ini && \
+    echo "X11DisplayOffset=10" >> /etc/xrdp/sesman.ini && \
+    echo "MaxSessions=50" >> /etc/xrdp/sesman.ini && \
+    echo "KillDisconnected=false" >> /etc/xrdp/sesman.ini && \
+    echo "IdleTimeLimit=0" >> /etc/xrdp/sesman.ini && \
+    echo "DisconnectedTimeLimit=0" >> /etc/xrdp/sesman.ini
+
+# Create startup script
+RUN echo "#!/bin/bash" > /etc/xrdp/startwm.sh && \
+    echo "export LANG=en_US.UTF-8" >> /etc/xrdp/startwm.sh && \
+    echo "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket" >> /etc/xrdp/startwm.sh && \
+    echo "exec startxfce4" >> /etc/xrdp/startwm.sh && \
+    chmod +x /etc/xrdp/startwm.sh
+
+# Set permissions
+RUN chown -R coder:coder /home/coder && \
+    chmod -R 755 /home/coder && \
+    chown root:root /etc/xrdp/startwm.sh && \
+    chmod 755 /etc/xrdp/startwm.sh && \
+    chown root:root /etc/xrdp/sesman.ini && \
+    chmod 644 /etc/xrdp/sesman.ini
 
 # Configure XFCE session
 RUN mkdir -p /home/coder/.cache/sessions && \
@@ -114,14 +159,6 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
 
 # Update supervisord config to ensure proper startup order
 RUN sed -i 's/\[supervisord\]/[supervisord]\nuser=root/g' /etc/supervisord.conf
-
-# Download and install Cursor
-RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
-    chmod +x /tmp/cursor.app && \
-    /tmp/cursor.app --appimage-extract && \
-    mv squashfs-root /usr/local/cursor && \
-    chown -R coder:coder /usr/local/cursor && \
-    rm /tmp/cursor.app
 
 # Set environment variables
 ENV LIBGL_ALWAYS_INDIRECT=1
