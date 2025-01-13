@@ -54,50 +54,73 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
     systemctl enable xrdp
 
-# Create cursor user
-RUN useradd -m -s /bin/bash cursor && \
-    echo "cursor ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    echo "cursor:cursor" | chpasswd && \
-    usermod -aG wheel cursor
+# Create coder user
+RUN useradd -m -s /bin/bash coder && \
+    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    echo "coder:coder" | chpasswd && \
+    usermod -aG wheel coder
 
 # Configure XFCE session
-RUN echo "startxfce4" > /home/cursor/.Xclients && \
-    chmod +x /home/cursor/.Xclients && \
-    chown cursor:cursor /home/cursor/.Xclients
+RUN mkdir -p /home/coder/.cache/sessions && \
+    mkdir -p /home/coder/.config/xfce4/xfconf/xfce-perchannel-xml && \
+    echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \
+    <channel name=\"xfwm4\" version=\"1.0\"> \
+      <property name=\"use_compositing\" type=\"bool\" value=\"false\"/> \
+    </channel>" > /home/coder/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml && \
+    chown -R coder:coder /home/coder/.cache /home/coder/.config
+
+# Set correct permissions and create necessary directories
+RUN mkdir -p /home/coder/.local/share && \
+    chown -R coder:coder /home/coder/.local && \
+    mkdir -p /dev/dri && \
+    chmod 777 /dev/dri
+
+# Configure X server for software rendering
+RUN echo '#!/bin/bash' > /home/coder/.Xclients && \
+    echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> /home/coder/.Xclients && \
+    echo 'export LIBGL_ALWAYS_INDIRECT=1' >> /home/coder/.Xclients && \
+    echo 'startxfce4' >> /home/coder/.Xclients && \
+    chmod +x /home/coder/.Xclients && \
+    chown coder:coder /home/coder/.Xclients
 
 # Set up D-Bus and required directories
 RUN mkdir -p /run/dbus && \
     mkdir -p /var/run/dbus && \
     dbus-uuidgen > /var/lib/dbus/machine-id && \
-    chown -R cursor:cursor /run/dbus
+    chown -R coder:coder /run/dbus
 
-# Create supervisord config
+# Configure supervisord with logging
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
+    echo "loglevel=debug" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:dbus]" >> /etc/supervisord.conf && \
     echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "stdout_logfile=/var/log/dbus.log" >> /etc/supervisord.conf && \
+    echo "stderr_logfile=/var/log/dbus.err" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp-sesman]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman --nodaemon" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "stdout_logfile=/var/log/xrdp-sesman.log" >> /etc/supervisord.conf && \
+    echo "stderr_logfile=/var/log/xrdp-sesman.err" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp --nodaemon" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf
+    echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "stdout_logfile=/var/log/xrdp.log" >> /etc/supervisord.conf && \
+    echo "stderr_logfile=/var/log/xrdp.err" >> /etc/supervisord.conf
 
-# Configure system for AppImage support
-RUN echo "user_allow_other" >> /etc/fuse.conf && \
-    modprobe fuse || true
-
+# Update supervisord config to ensure proper startup order
+RUN sed -i 's/\[supervisord\]/[supervisord]\nuser=root/g' /etc/supervisord.conf
 
 # Download and install Cursor
 RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
     chmod +x /tmp/cursor.app && \
     /tmp/cursor.app --appimage-extract && \
     mv squashfs-root /usr/local/cursor && \
-    chown -R cursor:cursor /usr/local/cursor && \
+    chown -R coder:coder /usr/local/cursor && \
     rm /tmp/cursor.app
 
 # Set environment variables
@@ -106,27 +129,29 @@ ENV ELECTRON_DISABLE_SANDBOX=1
 ENV ELECTRON_FORCE_WINDOW_MENU_BAR=1
 ENV APPDIR=/usr/local/cursor
 
-# Create cursor startup script with proper environment
+# Create cursor startup script with software rendering
 RUN echo '#!/bin/bash' > /bin/cursor.sh && \
     echo 'export DISPLAY=${DISPLAY:-:0}' >> /bin/cursor.sh && \
+    echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> /bin/cursor.sh && \
     echo 'export LIBGL_ALWAYS_INDIRECT=1' >> /bin/cursor.sh && \
     echo 'export ELECTRON_FORCE_WINDOW_MENU_BAR=1' >> /bin/cursor.sh && \
     echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /bin/cursor.sh && \
     echo 'export APPDIR=/usr/local/cursor' >> /bin/cursor.sh && \
-    echo 'exec $APPDIR/AppRun --no-sandbox --disable-gpu-sandbox --disable-software-rasterizer "$@"' >> /bin/cursor.sh && \
+    echo 'export ELECTRON_ENABLE_LOGGING=true' >> /bin/cursor.sh && \
+    echo 'exec $APPDIR/AppRun --no-sandbox --disable-gpu --in-process-gpu --disable-gpu-compositing "$@" 2>/var/log/cursor.err 1>/var/log/cursor.log' >> /bin/cursor.sh && \
     chmod +x /bin/cursor.sh && \
-    chown cursor:cursor /bin/cursor.sh
+    chown coder:coder /bin/cursor.sh
 
 # Create desktop shortcut for Cursor
-RUN mkdir -p /home/cursor/Desktop && \
-    echo "[Desktop Entry]" > /home/cursor/Desktop/cursor.desktop && \
-    echo "Name=Cursor" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Exec=bash -c 'eval \$(dbus-launch --sh-syntax); eval \$(gnome-keyring-daemon --start --components=secrets); /bin/cursor.sh'" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Type=Application" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Categories=Development;" >> /home/cursor/Desktop/cursor.desktop && \
-    chmod +x /home/cursor/Desktop/cursor.desktop && \
-    chown -R cursor:cursor /home/cursor/Desktop
+RUN mkdir -p /home/coder/Desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/cursor.desktop && \
+    echo "Name=Cursor" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Exec=bash -c 'eval \$(dbus-launch --sh-syntax); eval \$(gnome-keyring-daemon --start --components=secrets); /bin/cursor.sh'" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Categories=Development;" >> /home/coder/Desktop/cursor.desktop && \
+    chmod +x /home/coder/Desktop/cursor.desktop && \
+    chown -R coder:coder /home/coder/Desktop
 
 # Configure cursor:// protocol handler
 RUN mkdir -p /usr/share/applications && \
@@ -141,12 +166,12 @@ RUN mkdir -p /usr/share/applications && \
     update-desktop-database /usr/share/applications
 
 # Configure Chrome as default browser
-RUN mkdir -p /home/cursor/.config && \
-    echo "[Default Applications]" > /home/cursor/.config/mimeapps.list && \
-    echo "x-scheme-handler/http=chrome-wrapper.desktop" >> /home/cursor/.config/mimeapps.list && \
-    echo "x-scheme-handler/https=chrome-wrapper.desktop" >> /home/cursor/.config/mimeapps.list && \
-    echo "text/html=chrome-wrapper.desktop" >> /home/cursor/.config/mimeapps.list && \
-    chown -R cursor:cursor /home/cursor/.config
+RUN mkdir -p /home/coder/.config && \
+    echo "[Default Applications]" > /home/coder/.config/mimeapps.list && \
+    echo "x-scheme-handler/http=chrome-wrapper.desktop" >> /home/coder/.config/mimeapps.list && \
+    echo "x-scheme-handler/https=chrome-wrapper.desktop" >> /home/coder/.config/mimeapps.list && \
+    echo "text/html=chrome-wrapper.desktop" >> /home/coder/.config/mimeapps.list && \
+    chown -R coder:coder /home/coder/.config
 
 # Create Chrome wrapper desktop entry
 RUN echo "[Desktop Entry]" > /usr/share/applications/chrome-wrapper.desktop && \
