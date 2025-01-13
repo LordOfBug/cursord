@@ -18,6 +18,9 @@ RUN yum -y install epel-release && \
     thunar \
     dbus \
     dbus-x11 \
+    xfce4-session \
+    xfce4-panel \
+    xfce4-settings \
     && yum clean all
 
 # Create user
@@ -93,8 +96,49 @@ RUN echo '#!/bin/bash' > /etc/xrdp/startwm.sh && \
     echo 'mkdir -p $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'chmod 700 $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'chown $(id -u):$(id -g) $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
-    echo 'exec startxfce4' >> /etc/xrdp/startwm.sh && \
+    echo 'mkdir -p ~/.config' >> /etc/xrdp/startwm.sh && \
+    echo 'echo "[Session]" > ~/.config/xfce4-session.rc' >> /etc/xrdp/startwm.sh && \
+    echo 'echo "SessionName=Default" >> ~/.config/xfce4-session.rc' >> /etc/xrdp/startwm.sh && \
+    echo 'if test -r /etc/profile; then' >> /etc/xrdp/startwm.sh && \
+    echo '    . /etc/profile' >> /etc/xrdp/startwm.sh && \
+    echo 'fi' >> /etc/xrdp/startwm.sh && \
+    echo 'if test -r ~/.bash_profile; then' >> /etc/xrdp/startwm.sh && \
+    echo '    . ~/.bash_profile' >> /etc/xrdp/startwm.sh && \
+    echo 'fi' >> /etc/xrdp/startwm.sh && \
+    echo 'xfce4-session' >> /etc/xrdp/startwm.sh && \
     chmod +x /etc/xrdp/startwm.sh
+
+# Configure default XFCE session
+RUN mkdir -p /etc/skel/.config/xfce4 && \
+    echo '<?xml version="1.0" encoding="UTF-8"?>' > /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '<channel name="xfce4-session" version="1.0">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '  <property name="general" type="empty">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '    <property name="FailsafeSessionName" type="string" value="Failsafe"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '  </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '  <property name="sessions" type="empty">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '    <property name="Failsafe" type="empty">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      <property name="IsFailsafe" type="bool" value="true"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      <property name="Count" type="int" value="5"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      <property name="Client0_Command" type="array">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '        <value type="string" value="xfwm4"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      <property name="Client1_Command" type="array">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '        <value type="string" value="xfce4-panel"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      <property name="Client2_Command" type="array">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '        <value type="string" value="Thunar"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      <property name="Client3_Command" type="array">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '        <value type="string" value="xfdesktop"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      <property name="Client4_Command" type="array">' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '        <value type="string" value="xfce4-settings-manager"/>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '      </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '    </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '  </property>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    echo '</channel>' >> /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml && \
+    cp -r /etc/skel/.config /home/coder/ && \
+    chown -R coder:coder /home/coder/.config
 
 # Configure supervisord
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
@@ -103,6 +147,11 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:dbus]" >> /etc/supervisord.conf && \
     echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
+    echo "user=root" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf && \
+    echo "" >> /etc/supervisord.conf && \
+    echo "[program:xorg]" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/Xorg :10 -auth /etc/xrdp/xrdp_auth.conf" >> /etc/supervisord.conf && \
     echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
@@ -122,6 +171,8 @@ RUN mkdir -p /tmp/.X11-unix && \
     mkdir -p /run/dbus && \
     mkdir -p /var/run/dbus && \
     mkdir -p /var/log/xrdp && \
+    touch /etc/xrdp/xrdp_auth.conf && \
+    chmod 644 /etc/xrdp/xrdp_auth.conf && \
     chown -R coder:coder /home/coder
 
 # Set environment variables
