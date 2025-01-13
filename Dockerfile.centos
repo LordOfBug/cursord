@@ -12,6 +12,8 @@ RUN yum install -y epel-release && \
     xorg-x11-xauth \
     xorg-x11-utils \
     mesa-libGL \
+    mesa-dri-drivers \
+    mesa-libgbm \
     libX11 \
     libXcomposite \
     libXcursor \
@@ -19,12 +21,18 @@ RUN yum install -y epel-release && \
     libXext \
     libXi \
     libXtst \
+    libXrandr \
+    libXScrnSaver \
+    libxkbfile \
+    libXinerama \
     fuse \
     fuse-libs \
     xdg-utils \
     wget \
     dbus \
     dbus-x11 \
+    gnome-keyring \
+    libsecret \
     redhat-lsb-core \
     liberation-fonts \
     && yum clean all
@@ -93,25 +101,44 @@ RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
     rm /tmp/cursor.app
 
 # Set environment variables
+ENV LIBGL_ALWAYS_INDIRECT=1
+ENV ELECTRON_DISABLE_SANDBOX=1
+ENV ELECTRON_FORCE_WINDOW_MENU_BAR=1
 ENV APPDIR=/usr/local/cursor
 
-# Copy cursor startup script
-COPY cursor-centos.sh /bin/cursor.sh
-RUN chmod +x /bin/cursor.sh && \
+# Create cursor startup script with proper environment
+RUN echo '#!/bin/bash' > /bin/cursor.sh && \
+    echo 'export DISPLAY=${DISPLAY:-:0}' >> /bin/cursor.sh && \
+    echo 'export LIBGL_ALWAYS_INDIRECT=1' >> /bin/cursor.sh && \
+    echo 'export ELECTRON_FORCE_WINDOW_MENU_BAR=1' >> /bin/cursor.sh && \
+    echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /bin/cursor.sh && \
+    echo 'export APPDIR=/usr/local/cursor' >> /bin/cursor.sh && \
+    echo 'exec $APPDIR/AppRun --no-sandbox --disable-gpu-sandbox --disable-software-rasterizer "$@"' >> /bin/cursor.sh && \
+    chmod +x /bin/cursor.sh && \
     chown cursor:cursor /bin/cursor.sh
 
 # Create desktop shortcut for Cursor
 RUN mkdir -p /home/cursor/Desktop && \
     echo "[Desktop Entry]" > /home/cursor/Desktop/cursor.desktop && \
     echo "Name=Cursor" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Exec=/bin/cursor.sh" >> /home/cursor/Desktop/cursor.desktop && \
+    echo "Exec=bash -c 'eval \$(dbus-launch --sh-syntax); eval \$(gnome-keyring-daemon --start --components=secrets); /bin/cursor.sh'" >> /home/cursor/Desktop/cursor.desktop && \
     echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/cursor/Desktop/cursor.desktop && \
-    echo "Terminal=false" >> /home/cursor/Desktop/cursor.desktop && \
     echo "Type=Application" >> /home/cursor/Desktop/cursor.desktop && \
     echo "Categories=Development;" >> /home/cursor/Desktop/cursor.desktop && \
     chmod +x /home/cursor/Desktop/cursor.desktop && \
     chown -R cursor:cursor /home/cursor/Desktop
 
+# Configure cursor:// protocol handler
+RUN mkdir -p /usr/share/applications && \
+    echo "[Desktop Entry]" > /usr/share/applications/cursor-protocol-handler.desktop && \
+    echo "Name=Cursor Protocol Handler" >> /usr/share/applications/cursor-protocol-handler.desktop && \
+    echo "Exec=/bin/cursor.sh --reuse-window --open-url %u" >> /usr/share/applications/cursor-protocol-handler.desktop && \
+    echo "Type=Application" >> /usr/share/applications/cursor-protocol-handler.desktop && \
+    echo "MimeType=x-scheme-handler/cursor;" >> /usr/share/applications/cursor-protocol-handler.desktop && \
+    echo "NoDisplay=true" >> /usr/share/applications/cursor-protocol-handler.desktop && \
+    chmod +x /usr/share/applications/cursor-protocol-handler.desktop && \
+    xdg-mime default cursor-protocol-handler.desktop x-scheme-handler/cursor && \
+    update-desktop-database /usr/share/applications
 
 # Configure Chrome as default browser
 RUN mkdir -p /home/cursor/.config && \
