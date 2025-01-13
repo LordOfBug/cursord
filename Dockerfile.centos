@@ -5,13 +5,22 @@ FROM buglord/centos7-base:latest
 RUN yum install -y epel-release && \
     yum groupinstall -y "X Window System" "Xfce" && \
     yum install -y \
+    xorg-x11-server-Xorg \
+    xorg-x11-fonts-Type1 \
+    xorg-x11-fonts-75dpi \
+    xorg-x11-fonts-100dpi \
+    xorg-x11-fonts-misc \
+    xorg-x11-utils \
+    xorg-x11-xinit \
+    xfwm4 \
+    xfdesktop \
+    thunar \
+    mesa-libGL \
     xrdp \
     xrdp-selinux \
     supervisor \
     which \
     xorg-x11-xauth \
-    xorg-x11-utils \
-    mesa-libGL \
     mesa-dri-drivers \
     mesa-libgbm \
     libX11 \
@@ -49,34 +58,12 @@ RUN useradd -m -s /bin/bash coder && \
     echo "coder:coder" | chpasswd && \
     usermod -aG wheel coder
 
-# Download and install Cursor
-RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
-    chmod +x /tmp/cursor.app && \
-    /tmp/cursor.app --appimage-extract && \
-    mv squashfs-root /usr/local/cursor && \
-    chown -R coder:coder /usr/local/cursor && \
-    rm /tmp/cursor.app
-
-# Create Chrome wrapper script
-RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
-    echo 'LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH exec /usr/bin/google-chrome "$@"' >> /usr/local/bin/chrome-wrapper.sh && \
-    chmod +x /usr/local/bin/chrome-wrapper.sh
-
-# Set up X11 and DBus permissions
-RUN mkdir -p /run/dbus && \
-    mkdir -p /var/run/dbus && \
-    mkdir -p /tmp/.X11-unix && \
-    chmod 1777 /tmp/.X11-unix && \
-    chown root:root /tmp/.X11-unix && \
-    touch /home/coder/.Xauthority && \
-    chown coder:coder /home/coder/.Xauthority && \
-    dbus-uuidgen > /var/lib/dbus/machine-id && \
-    ln -sf /var/lib/dbus/machine-id /etc/machine-id
-
-# Configure system limits for coder user
-RUN echo "coder soft nofile 65536" >> /etc/security/limits.conf && \
-    echo "coder hard nofile 65536" >> /etc/security/limits.conf && \
-    echo "session required pam_limits.so" >> /etc/pam.d/login
+# Configure X server
+RUN echo "#!/bin/bash" > /etc/X11/xinit/xinitrc && \
+    echo "exec startxfce4" >> /etc/X11/xinit/xinitrc && \
+    chmod +x /etc/X11/xinit/xinitrc && \
+    echo "allowed_users=anybody" > /etc/X11/Xwrapper.config && \
+    echo "needs_root_rights=yes" >> /etc/X11/Xwrapper.config
 
 # Configure XRDP
 RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
@@ -84,10 +71,11 @@ RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/crypt_level=high/crypt_level=none/g' /etc/xrdp/xrdp.ini && \
     sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
-    systemctl enable xrdp && \
+    sed -i 's/lib=libvnc.so/lib=libxrdp.so/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/port=3389/port=3389\nuse_vsock=false/g' /etc/xrdp/xrdp.ini && \
     echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
 
-# Create sesman config
+# Configure sesman.ini
 RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "ListenAddress=127.0.0.1" >> /etc/xrdp/sesman.ini && \
     echo "ListenPort=3350" >> /etc/xrdp/sesman.ini && \
@@ -103,66 +91,65 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "X11DisplayOffset=10" >> /etc/xrdp/sesman.ini && \
     echo "MaxSessions=50" >> /etc/xrdp/sesman.ini && \
     echo "KillDisconnected=false" >> /etc/xrdp/sesman.ini && \
+    echo "DisconnectedTimeLimit=0" >> /etc/xrdp/sesman.ini && \
     echo "IdleTimeLimit=0" >> /etc/xrdp/sesman.ini && \
-    echo "DisconnectedTimeLimit=0" >> /etc/xrdp/sesman.ini
+    echo "" >> /etc/xrdp/sesman.ini && \
+    echo "[Xorg]" >> /etc/xrdp/sesman.ini && \
+    echo "param=Xorg" >> /etc/xrdp/sesman.ini && \
+    echo "param=-config" >> /etc/xrdp/sesman.ini && \
+    echo "param=/etc/X11/xrdp/xorg.conf" >> /etc/xrdp/sesman.ini && \
+    echo "param=-noreset" >> /etc/xrdp/sesman.ini && \
+    echo "param=-nolisten" >> /etc/xrdp/sesman.ini && \
+    echo "param=tcp" >> /etc/xrdp/sesman.ini
+
+# Configure Xorg for XRDP
+RUN mkdir -p /etc/X11/xrdp && \
+    echo 'Section "ServerFlags"' > /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "DontVTSwitch" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoAddDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AutoEnableDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Option "AllowMouseOpenFail" "true"' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'Section "Module"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Load "glx"' >> /etc/X11/xrdp/xorg.conf && \
+    echo '    Load "dri2"' >> /etc/X11/xrdp/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xrdp/xorg.conf
 
 # Create startup script
-RUN echo "#!/bin/bash" > /etc/xrdp/startwm.sh && \
-    echo 'export LANG=en_US.UTF-8' >> /etc/xrdp/startwm.sh && \
+RUN echo '#!/bin/bash' > /etc/xrdp/startwm.sh && \
+    echo 'if [ -r /etc/default/locale ]; then' >> /etc/xrdp/startwm.sh && \
+    echo '    . /etc/default/locale' >> /etc/xrdp/startwm.sh && \
+    echo '    export LANG LANGUAGE' >> /etc/xrdp/startwm.sh && \
+    echo 'fi' >> /etc/xrdp/startwm.sh && \
     echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> /etc/xrdp/startwm.sh && \
     echo 'export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket' >> /etc/xrdp/startwm.sh && \
     echo 'mkdir -p $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'chmod 700 $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'chown $(id -u):$(id -g) $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
+    echo 'unset DBUS_SESSION_BUS_ADDRESS' >> /etc/xrdp/startwm.sh && \
+    echo 'unset XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'exec startxfce4' >> /etc/xrdp/startwm.sh && \
     chmod +x /etc/xrdp/startwm.sh
 
-# Set permissions
-RUN chown -R coder:coder /home/coder && \
-    chmod -R 755 /home/coder && \
-    chown root:root /etc/xrdp/startwm.sh && \
-    chmod 755 /etc/xrdp/startwm.sh && \
-    chown root:root /etc/xrdp/sesman.ini && \
-    chmod 644 /etc/xrdp/sesman.ini
+# Set up systemd session
+RUN mkdir -p /run/systemd/system
 
-# Configure XFCE session
-RUN mkdir -p /home/coder/.cache/sessions && \
-    mkdir -p /home/coder/.config/xfce4/xfconf/xfce-perchannel-xml && \
-    echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \
-    <channel name=\"xfwm4\" version=\"1.0\"> \
-      <property name=\"use_compositing\" type=\"bool\" value=\"false\"/> \
-    </channel>" > /home/coder/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml && \
-    chown -R coder:coder /home/coder/.cache /home/coder/.config
+# Set up X11 socket directory
+RUN mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix
 
-# Set correct permissions and create necessary directories
-RUN mkdir -p /home/coder/.local/share && \
-    chown -R coder:coder /home/coder/.local && \
-    mkdir -p /dev/dri && \
-    chmod 777 /dev/dri
+# Set environment variables
+ENV DISPLAY=:10
+ENV LANG=en_US.UTF-8
+ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
-# Configure X server for software rendering
-RUN echo '#!/bin/bash' > /home/coder/.Xclients && \
-    echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> /home/coder/.Xclients && \
-    echo 'export LIBGL_ALWAYS_INDIRECT=1' >> /home/coder/.Xclients && \
-    echo 'startxfce4' >> /home/coder/.Xclients && \
-    chmod +x /home/coder/.Xclients && \
-    chown coder:coder /home/coder/.Xclients
-
-# Set up D-Bus and required directories
-RUN mkdir -p /run/dbus && \
-    mkdir -p /var/run/dbus && \
-    dbus-uuidgen > /var/lib/dbus/machine-id && \
-    chown -R coder:coder /run/dbus
-
-# Configure supervisord with logging
+# Configure supervisord
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
     echo "user=root" >> /etc/supervisord.conf && \
-    echo "logfile=/var/log/supervisor/supervisord.log" >> /etc/supervisord.conf && \
-    echo "childlogdir=/var/log/supervisor" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:dbus]" >> /etc/supervisord.conf && \
-    echo "command=/usr/bin/dbus-daemon --system --nofork --nopidfile" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
     echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
@@ -176,47 +163,18 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf
 
-# Create required directories and set permissions
-RUN mkdir -p /var/log/supervisor && \
-    mkdir -p /home/coder/.local/share/xrdp && \
-    chown -R coder:coder /home/coder/.local && \
-    chmod -R 755 /home/coder/.local
+# Set permissions
+RUN mkdir -p /var/run/dbus && \
+    mkdir -p /var/log/xrdp && \
+    chown -R coder:coder /home/coder && \
+    chmod -R 755 /home/coder && \
+    chown root:root /etc/xrdp/startwm.sh && \
+    chmod 755 /etc/xrdp/startwm.sh
 
-# Create cursor startup script with software rendering
-RUN echo '#!/bin/bash' > /bin/cursor.sh && \
-    echo 'export DISPLAY=${DISPLAY:-:0}' >> /bin/cursor.sh && \
-    echo 'export LIBGL_ALWAYS_SOFTWARE=1' >> /bin/cursor.sh && \
-    echo 'export LIBGL_ALWAYS_INDIRECT=1' >> /bin/cursor.sh && \
-    echo 'export ELECTRON_FORCE_WINDOW_MENU_BAR=1' >> /bin/cursor.sh && \
-    echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /bin/cursor.sh && \
-    echo 'export APPDIR=/usr/local/cursor' >> /bin/cursor.sh && \
-    echo 'export ELECTRON_ENABLE_LOGGING=true' >> /bin/cursor.sh && \
-    echo 'exec $APPDIR/AppRun --no-sandbox --disable-gpu --in-process-gpu --disable-gpu-compositing "$@" 2>/var/log/cursor.err 1>/var/log/cursor.log' >> /bin/cursor.sh && \
-    chmod +x /bin/cursor.sh && \
-    chown coder:coder /bin/cursor.sh
-
-# Create desktop shortcut for Cursor
-RUN mkdir -p /home/coder/Desktop && \
-    echo "[Desktop Entry]" > /home/coder/Desktop/cursor.desktop && \
-    echo "Name=Cursor" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Exec=bash -c 'eval \$(dbus-launch --sh-syntax); eval \$(gnome-keyring-daemon --start --components=secrets); /bin/cursor.sh'" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Type=Application" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Categories=Development;" >> /home/coder/Desktop/cursor.desktop && \
-    chmod +x /home/coder/Desktop/cursor.desktop && \
-    chown -R coder:coder /home/coder/Desktop
-
-# Configure cursor:// protocol handler
-RUN mkdir -p /usr/share/applications && \
-    echo "[Desktop Entry]" > /usr/share/applications/cursor-protocol-handler.desktop && \
-    echo "Name=Cursor Protocol Handler" >> /usr/share/applications/cursor-protocol-handler.desktop && \
-    echo "Exec=/bin/cursor.sh --reuse-window --open-url %u" >> /usr/share/applications/cursor-protocol-handler.desktop && \
-    echo "Type=Application" >> /usr/share/applications/cursor-protocol-handler.desktop && \
-    echo "MimeType=x-scheme-handler/cursor;" >> /usr/share/applications/cursor-protocol-handler.desktop && \
-    echo "NoDisplay=true" >> /usr/share/applications/cursor-protocol-handler.desktop && \
-    chmod +x /usr/share/applications/cursor-protocol-handler.desktop && \
-    xdg-mime default cursor-protocol-handler.desktop x-scheme-handler/cursor && \
-    update-desktop-database /usr/share/applications
+# Create Chrome wrapper script
+RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
+    echo 'LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH exec /usr/bin/google-chrome "$@"' >> /usr/local/bin/chrome-wrapper.sh && \
+    chmod +x /usr/local/bin/chrome-wrapper.sh
 
 # Configure Chrome as default browser
 RUN mkdir -p /home/coder/.config && \
@@ -239,8 +197,6 @@ RUN echo "[Desktop Entry]" > /usr/share/applications/chrome-wrapper.desktop && \
 # Add Chrome policy to disable sandbox (required for running in container)
 RUN mkdir -p /etc/opt/chrome/policies/managed && \
     echo '{ "AllowInsecureLocalhost": true, "SandboxLinux": false }' > /etc/opt/chrome/policies/managed/policy.json
-    
-ENV LANG=en_US.UTF-8
 
 # Expose XRDP port
 EXPOSE 3389
