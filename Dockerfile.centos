@@ -62,6 +62,22 @@ RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
     echo 'LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH exec /usr/bin/google-chrome "$@"' >> /usr/local/bin/chrome-wrapper.sh && \
     chmod +x /usr/local/bin/chrome-wrapper.sh
 
+# Set up X11 and DBus permissions
+RUN mkdir -p /run/dbus && \
+    mkdir -p /var/run/dbus && \
+    mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    chown root:root /tmp/.X11-unix && \
+    touch /home/coder/.Xauthority && \
+    chown coder:coder /home/coder/.Xauthority && \
+    dbus-uuidgen > /var/lib/dbus/machine-id && \
+    ln -sf /var/lib/dbus/machine-id /etc/machine-id
+
+# Configure system limits for coder user
+RUN echo "coder soft nofile 65536" >> /etc/security/limits.conf && \
+    echo "coder hard nofile 65536" >> /etc/security/limits.conf && \
+    echo "session required pam_limits.so" >> /etc/pam.d/login
+
 # Configure XRDP
 RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
     sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
@@ -92,9 +108,13 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
 
 # Create startup script
 RUN echo "#!/bin/bash" > /etc/xrdp/startwm.sh && \
-    echo "export LANG=en_US.UTF-8" >> /etc/xrdp/startwm.sh && \
-    echo "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket" >> /etc/xrdp/startwm.sh && \
-    echo "exec startxfce4" >> /etc/xrdp/startwm.sh && \
+    echo 'export LANG=en_US.UTF-8' >> /etc/xrdp/startwm.sh && \
+    echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> /etc/xrdp/startwm.sh && \
+    echo 'export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket' >> /etc/xrdp/startwm.sh && \
+    echo 'mkdir -p $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
+    echo 'chmod 700 $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
+    echo 'chown $(id -u):$(id -g) $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
+    echo 'exec startxfce4' >> /etc/xrdp/startwm.sh && \
     chmod +x /etc/xrdp/startwm.sh
 
 # Set permissions
@@ -137,34 +157,30 @@ RUN mkdir -p /run/dbus && \
 # Configure supervisord with logging
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
-    echo "loglevel=debug" >> /etc/supervisord.conf && \
+    echo "user=root" >> /etc/supervisord.conf && \
+    echo "logfile=/var/log/supervisor/supervisord.log" >> /etc/supervisord.conf && \
+    echo "childlogdir=/var/log/supervisor" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:dbus]" >> /etc/supervisord.conf && \
-    echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/dbus-daemon --system --nofork --nopidfile" >> /etc/supervisord.conf && \
+    echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
-    echo "stdout_logfile=/var/log/dbus.log" >> /etc/supervisord.conf && \
-    echo "stderr_logfile=/var/log/dbus.err" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp-sesman]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman --nodaemon" >> /etc/supervisord.conf && \
+    echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
-    echo "stdout_logfile=/var/log/xrdp-sesman.log" >> /etc/supervisord.conf && \
-    echo "stderr_logfile=/var/log/xrdp-sesman.err" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xrdp]" >> /etc/supervisord.conf && \
     echo "command=/usr/sbin/xrdp --nodaemon" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf && \
-    echo "stdout_logfile=/var/log/xrdp.log" >> /etc/supervisord.conf && \
-    echo "stderr_logfile=/var/log/xrdp.err" >> /etc/supervisord.conf
+    echo "user=root" >> /etc/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisord.conf
 
-# Update supervisord config to ensure proper startup order
-RUN sed -i 's/\[supervisord\]/[supervisord]\nuser=root/g' /etc/supervisord.conf
-
-# Set environment variables
-ENV LIBGL_ALWAYS_INDIRECT=1
-ENV ELECTRON_DISABLE_SANDBOX=1
-ENV ELECTRON_FORCE_WINDOW_MENU_BAR=1
-ENV APPDIR=/usr/local/cursor
+# Create required directories and set permissions
+RUN mkdir -p /var/log/supervisor && \
+    mkdir -p /home/coder/.local/share/xrdp && \
+    chown -R coder:coder /home/coder/.local && \
+    chmod -R 755 /home/coder/.local
 
 # Create cursor startup script with software rendering
 RUN echo '#!/bin/bash' > /bin/cursor.sh && \
