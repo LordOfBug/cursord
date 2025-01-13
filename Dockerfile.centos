@@ -1,79 +1,54 @@
-# First stage to copy GLIBC
-FROM buglord/centos7-base:latest
+FROM centos:7
 
-# Install X server, XFCE desktop, and essential packages (without Chrome)
-RUN yum install -y epel-release && \
-    yum groupinstall -y "X Window System" "Xfce" && \
-    yum install -y \
+# replace repos to avoid the mirror URL problem
+ADD centos/repos /etc/yum.repos.d
+
+# Install EPEL and required packages
+RUN yum -y install epel-release && \
+    yum -y groupinstall "X Window System" "Xfce" && \
+    yum -y install \
+    xrdp \
+    supervisor \
     xorg-x11-server-Xorg \
-    xorg-x11-fonts-Type1 \
-    xorg-x11-fonts-75dpi \
-    xorg-x11-fonts-100dpi \
-    xorg-x11-fonts-misc \
+    xorg-x11-fonts-* \
     xorg-x11-utils \
     xorg-x11-xinit \
     xfwm4 \
     xfdesktop \
     thunar \
-    mesa-libGL \
-    xrdp \
-    xrdp-selinux \
-    supervisor \
-    which \
-    xorg-x11-xauth \
-    mesa-dri-drivers \
-    mesa-libgbm \
-    libX11 \
-    libXcomposite \
-    libXcursor \
-    libXdamage \
-    libXext \
-    libXi \
-    libXtst \
-    libXrandr \
-    libXScrnSaver \
-    libxkbfile \
-    libXinerama \
-    fuse \
-    fuse-libs \
-    xdg-utils \
-    wget \
     dbus \
     dbus-x11 \
-    gnome-keyring \
-    libsecret \
-    redhat-lsb-core \
-    liberation-fonts \
     && yum clean all
 
-COPY google-chrome.repo /etc/yum.repos.d/
-
-# Install Chrome with custom library path, ignoring dependencies
-RUN yum install -y --skip-broken google-chrome-stable
-# echo 'export LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/chrome-libs.sh
-
-# Create coder user
+# Create user
 RUN useradd -m -s /bin/bash coder && \
-    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
     echo "coder:coder" | chpasswd && \
-    usermod -aG wheel coder
-
-# Configure X server
-RUN echo "#!/bin/bash" > /etc/X11/xinit/xinitrc && \
-    echo "exec startxfce4" >> /etc/X11/xinit/xinitrc && \
-    chmod +x /etc/X11/xinit/xinitrc && \
-    echo "allowed_users=anybody" > /etc/X11/Xwrapper.config && \
-    echo "needs_root_rights=yes" >> /etc/X11/Xwrapper.config
+    usermod -aG wheel coder && \
+    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Configure XRDP
-RUN cp /etc/xrdp/xrdp.ini /etc/xrdp/xrdp.ini.bak && \
-    sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/security_layer=negotiate/security_layer=rdp/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/crypt_level=high/crypt_level=none/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/bitmap_compression=true/bitmap_compression=false/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/lib=libvnc.so/lib=libxrdp.so/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/port=3389/port=3389\nuse_vsock=false/g' /etc/xrdp/xrdp.ini && \
-    echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
+RUN mkdir -p /etc/xrdp && \
+    echo "[Globals]" > /etc/xrdp/xrdp.ini && \
+    echo "ini_version=1" >> /etc/xrdp/xrdp.ini && \
+    echo "fork=true" >> /etc/xrdp/xrdp.ini && \
+    echo "port=3389" >> /etc/xrdp/xrdp.ini && \
+    echo "use_vsock=false" >> /etc/xrdp/xrdp.ini && \
+    echo "security_layer=rdp" >> /etc/xrdp/xrdp.ini && \
+    echo "crypt_level=none" >> /etc/xrdp/xrdp.ini && \
+    echo "certificate=" >> /etc/xrdp/xrdp.ini && \
+    echo "key_file=" >> /etc/xrdp/xrdp.ini && \
+    echo "ssl_protocols=TLSv1, TLSv1.1, TLSv1.2" >> /etc/xrdp/xrdp.ini && \
+    echo "channel_code=1" >> /etc/xrdp/xrdp.ini && \
+    echo "max_bpp=24" >> /etc/xrdp/xrdp.ini && \
+    echo "bitmap_compression=false" >> /etc/xrdp/xrdp.ini && \
+    echo "" >> /etc/xrdp/xrdp.ini && \
+    echo "[Xorg]" >> /etc/xrdp/xrdp.ini && \
+    echo "name=Xorg" >> /etc/xrdp/xrdp.ini && \
+    echo "lib=libxup.so" >> /etc/xrdp/xrdp.ini && \
+    echo "username=ask" >> /etc/xrdp/xrdp.ini && \
+    echo "password=ask" >> /etc/xrdp/xrdp.ini && \
+    echo "ip=127.0.0.1" >> /etc/xrdp/xrdp.ini && \
+    echo "port=-1" >> /etc/xrdp/xrdp.ini
 
 # Configure sesman.ini
 RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
@@ -92,56 +67,34 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "MaxSessions=50" >> /etc/xrdp/sesman.ini && \
     echo "KillDisconnected=false" >> /etc/xrdp/sesman.ini && \
     echo "DisconnectedTimeLimit=0" >> /etc/xrdp/sesman.ini && \
-    echo "IdleTimeLimit=0" >> /etc/xrdp/sesman.ini && \
-    echo "" >> /etc/xrdp/sesman.ini && \
-    echo "[Xorg]" >> /etc/xrdp/sesman.ini && \
-    echo "param=Xorg" >> /etc/xrdp/sesman.ini && \
-    echo "param=-config" >> /etc/xrdp/sesman.ini && \
-    echo "param=/etc/X11/xrdp/xorg.conf" >> /etc/xrdp/sesman.ini && \
-    echo "param=-noreset" >> /etc/xrdp/sesman.ini && \
-    echo "param=-nolisten" >> /etc/xrdp/sesman.ini && \
-    echo "param=tcp" >> /etc/xrdp/sesman.ini
+    echo "IdleTimeLimit=0" >> /etc/xrdp/sesman.ini
 
-# Configure Xorg for XRDP
-RUN mkdir -p /etc/X11/xrdp && \
+# Configure X server
+RUN echo "allowed_users=anybody" > /etc/X11/Xwrapper.config && \
+    echo "needs_root_rights=yes" >> /etc/X11/Xwrapper.config && \
+    mkdir -p /etc/X11/xrdp && \
     echo 'Section "ServerFlags"' > /etc/X11/xrdp/xorg.conf && \
     echo '    Option "DontVTSwitch" "true"' >> /etc/X11/xrdp/xorg.conf && \
     echo '    Option "AutoAddDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
     echo '    Option "AutoEnableDevices" "true"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Option "AllowMouseOpenFail" "true"' >> /etc/X11/xrdp/xorg.conf && \
     echo 'EndSection' >> /etc/X11/xrdp/xorg.conf && \
     echo 'Section "Module"' >> /etc/X11/xrdp/xorg.conf && \
     echo '    Load "glx"' >> /etc/X11/xrdp/xorg.conf && \
-    echo '    Load "dri2"' >> /etc/X11/xrdp/xorg.conf && \
     echo 'EndSection' >> /etc/X11/xrdp/xorg.conf
 
 # Create startup script
 RUN echo '#!/bin/bash' > /etc/xrdp/startwm.sh && \
-    echo 'if [ -r /etc/default/locale ]; then' >> /etc/xrdp/startwm.sh && \
-    echo '    . /etc/default/locale' >> /etc/xrdp/startwm.sh && \
-    echo '    export LANG LANGUAGE' >> /etc/xrdp/startwm.sh && \
-    echo 'fi' >> /etc/xrdp/startwm.sh && \
+    echo 'export LANG=en_US.UTF-8' >> /etc/xrdp/startwm.sh && \
+    echo 'export DISPLAY=:10' >> /etc/xrdp/startwm.sh && \
+    echo 'export XRDP_SESSION=1' >> /etc/xrdp/startwm.sh && \
+    echo 'export XDG_SESSION_TYPE=x11' >> /etc/xrdp/startwm.sh && \
     echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> /etc/xrdp/startwm.sh && \
     echo 'export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket' >> /etc/xrdp/startwm.sh && \
     echo 'mkdir -p $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'chmod 700 $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'chown $(id -u):$(id -g) $XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
-    echo 'unset DBUS_SESSION_BUS_ADDRESS' >> /etc/xrdp/startwm.sh && \
-    echo 'unset XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh && \
     echo 'exec startxfce4' >> /etc/xrdp/startwm.sh && \
     chmod +x /etc/xrdp/startwm.sh
-
-# Set up systemd session
-RUN mkdir -p /run/systemd/system
-
-# Set up X11 socket directory
-RUN mkdir -p /tmp/.X11-unix && \
-    chmod 1777 /tmp/.X11-unix
-
-# Set environment variables
-ENV DISPLAY=:10
-ENV LANG=en_US.UTF-8
-ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
 # Configure supervisord
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
@@ -163,43 +116,21 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf
 
-# Set permissions
-RUN mkdir -p /var/run/dbus && \
+# Set up required directories and permissions
+RUN mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    mkdir -p /run/dbus && \
+    mkdir -p /var/run/dbus && \
     mkdir -p /var/log/xrdp && \
-    chown -R coder:coder /home/coder && \
-    chmod -R 755 /home/coder && \
-    chown root:root /etc/xrdp/startwm.sh && \
-    chmod 755 /etc/xrdp/startwm.sh
+    chown -R coder:coder /home/coder
 
-# Create Chrome wrapper script
-RUN echo '#!/bin/bash' > /usr/local/bin/chrome-wrapper.sh && \
-    echo 'LD_LIBRARY_PATH=/opt/glibc-2.28/lib:$LD_LIBRARY_PATH exec /usr/bin/google-chrome "$@"' >> /usr/local/bin/chrome-wrapper.sh && \
-    chmod +x /usr/local/bin/chrome-wrapper.sh
-
-# Configure Chrome as default browser
-RUN mkdir -p /home/coder/.config && \
-    echo "[Default Applications]" > /home/coder/.config/mimeapps.list && \
-    echo "x-scheme-handler/http=chrome-wrapper.desktop" >> /home/coder/.config/mimeapps.list && \
-    echo "x-scheme-handler/https=chrome-wrapper.desktop" >> /home/coder/.config/mimeapps.list && \
-    echo "text/html=chrome-wrapper.desktop" >> /home/coder/.config/mimeapps.list && \
-    chown -R coder:coder /home/coder/.config
-
-# Create Chrome wrapper desktop entry
-RUN echo "[Desktop Entry]" > /usr/share/applications/chrome-wrapper.desktop && \
-    echo "Version=1.0" >> /usr/share/applications/chrome-wrapper.desktop && \
-    echo "Name=Google Chrome" >> /usr/share/applications/chrome-wrapper.desktop && \
-    echo "Exec=/usr/local/bin/chrome-wrapper.sh %U" >> /usr/share/applications/chrome-wrapper.desktop && \
-    echo "Terminal=false" >> /usr/share/applications/chrome-wrapper.desktop && \
-    echo "Icon=google-chrome" >> /usr/share/applications/chrome-wrapper.desktop && \
-    echo "Type=Application" >> /usr/share/applications/chrome-wrapper.desktop && \
-    echo "Categories=Network;WebBrowser;" >> /usr/share/applications/chrome-wrapper.desktop
-
-# Add Chrome policy to disable sandbox (required for running in container)
-RUN mkdir -p /etc/opt/chrome/policies/managed && \
-    echo '{ "AllowInsecureLocalhost": true, "SandboxLinux": false }' > /etc/opt/chrome/policies/managed/policy.json
+# Set environment variables
+ENV DISPLAY=:10
+ENV LANG=en_US.UTF-8
+ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
 # Expose XRDP port
 EXPOSE 3389
 
 # Start supervisord
-ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
