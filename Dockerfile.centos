@@ -13,6 +13,7 @@ RUN yum -y install epel-release && \
     xorg-x11-fonts-* \
     xorg-x11-utils \
     xorg-x11-xinit \
+    xorg-x11-drv-dummy \
     xfwm4 \
     xfdesktop \
     thunar \
@@ -72,6 +73,31 @@ RUN echo "[Globals]" > /etc/xrdp/sesman.ini && \
     echo "DisconnectedTimeLimit=0" >> /etc/xrdp/sesman.ini && \
     echo "IdleTimeLimit=0" >> /etc/xrdp/sesman.ini
 
+# Create X11 config
+RUN echo 'Section "ServerFlags"' > /etc/X11/xorg.conf && \
+    echo '    Option "DontVTSwitch" "true"' >> /etc/X11/xorg.conf && \
+    echo '    Option "AllowMouseOpenFail" "true"' >> /etc/X11/xorg.conf && \
+    echo '    Option "PciForceNone" "true"' >> /etc/X11/xorg.conf && \
+    echo '    Option "AutoAddDevices" "false"' >> /etc/X11/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xorg.conf && \
+    echo '' >> /etc/X11/xorg.conf && \
+    echo 'Section "Device"' >> /etc/X11/xorg.conf && \
+    echo '    Identifier "dummy_videocard"' >> /etc/X11/xorg.conf && \
+    echo '    Driver "dummy"' >> /etc/X11/xorg.conf && \
+    echo '    VideoRam 256000' >> /etc/X11/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xorg.conf && \
+    echo '' >> /etc/X11/xorg.conf && \
+    echo 'Section "Screen"' >> /etc/X11/xorg.conf && \
+    echo '    Identifier "dummy_screen"' >> /etc/X11/xorg.conf && \
+    echo '    Device "dummy_videocard"' >> /etc/X11/xorg.conf && \
+    echo '    Monitor "dummy_monitor"' >> /etc/X11/xorg.conf && \
+    echo '    DefaultDepth 24' >> /etc/X11/xorg.conf && \
+    echo '    SubSection "Display"' >> /etc/X11/xorg.conf && \
+    echo '        Depth 24' >> /etc/X11/xorg.conf && \
+    echo '        Modes "1920x1080"' >> /etc/X11/xorg.conf && \
+    echo '    EndSubSection' >> /etc/X11/xorg.conf && \
+    echo 'EndSection' >> /etc/X11/xorg.conf
+
 # Configure X server
 RUN echo "allowed_users=anybody" > /etc/X11/Xwrapper.config && \
     echo "needs_root_rights=yes" >> /etc/X11/Xwrapper.config && \
@@ -130,7 +156,7 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
     echo "[program:xorg]" >> /etc/supervisord.conf && \
-    echo "command=/usr/bin/Xorg :10 -auth /etc/xrdp/xrdp_auth.conf" >> /etc/supervisord.conf && \
+    echo "command=/usr/bin/Xorg -noreset -novtswitch -nolisten tcp +extension GLX +extension RANDR +extension RENDER -logfile /var/log/Xorg.10.log -config /etc/X11/xorg.conf :10" >> /etc/supervisord.conf && \
     echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "" >> /etc/supervisord.conf && \
