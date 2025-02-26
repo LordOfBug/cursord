@@ -1,47 +1,112 @@
+# Use Ubuntu base image
 FROM ubuntu:22.04
 
-# Prevent interactive prompts during package installation
+# Set non-interactive mode for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install required packages for X11
+# Install essential dependencies
 RUN apt update && apt install -y \
+    vim \
+    wget \
+    sudo \
     xorg \
-    libgl1-mesa-glx \ 
-    libgl1-mesa-dri \ 
-    mesa-common-dev 
+    xrdp \
+    xfce4 \
+    xfce4-terminal \
+    xdg-utils \
+    gnome-keyring \
+    dbus-x11 \
+    libsecret-1-0 \
+    libsecret-common \
+    xauth \
+    supervisor \
+    software-properties-common \
+    # Chrome/Electron app dependencies
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    # XDG integration dependencies
+    desktop-file-utils \
+    mime-support \
+    && apt clean
 
-# Install fuse and other libraries
-RUN apt install -y vim wget net-tools fuse xdg-utils
-
-# Install Firefox ESR (non-snap version)
-RUN apt install -y software-properties-common && \
-    add-apt-repository ppa:mozillateam/ppa -y && \
-    echo 'Package: *' > /etc/apt/preferences.d/mozilla-firefox && \
-    echo 'Pin: release o=LP-PPA-mozillateam' >> /etc/apt/preferences.d/mozilla-firefox && \
-    echo 'Pin-Priority: 1001' >> /etc/apt/preferences.d/mozilla-firefox && \
+# Install Chrome and set as default browser
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt update && \
-    apt install -y firefox-esr
+    apt install -y google-chrome-stable && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    echo '#!/bin/bash' > /usr/bin/google-chrome-stable && \
+    echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type "$@"' >> /usr/bin/google-chrome-stable && \
+    chmod +x /usr/bin/google-chrome-stable && \
+    update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/bin/google-chrome-stable 500 && \
+    update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/bin/google-chrome-stable 500 && \
+    xdg-settings set default-web-browser google-chrome.desktop
 
-# Extra packages goes here
 
-# Download and set permissions for cursor.app (assuming it's available for Ubuntu)
-RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux
+# Configure XRDP
+RUN adduser xrdp ssl-cert && \
+    echo "startxfce4" > /etc/skel/.xsession && \
+    sed -i 's/max_bpp=32/max_bpp=128/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/xserverbpp=24/xserverbpp=128/g' /etc/xrdp/xrdp.ini && \
+    echo "xfce4-session" > /root/.xsession
 
-RUN chmod +x /tmp/cursor.app
+# Create user
+RUN useradd -m -s /bin/bash coder && \
+    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    echo "coder:coder" | chpasswd && \
+    cp /root/.xsession /home/coder/.xsession && \
+    chown coder:coder /home/coder/.xsession
 
-RUN /tmp/cursor.app --appimage-extract && mv squashfs-root /usr/local/cursor && rm /tmp/cursor.app
+# Set up supervisord configuration
+RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
+    echo "nodaemon=true" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[program:xrdp]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp -n" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[program:xrdp-sesman]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
-# prepare dbus
-RUN mkdir -p /run/dbus
+# Download cursor from cursor.sh
+RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
+    chmod +x /tmp/cursor.app && \
+    /tmp/cursor.app --appimage-extract && \
+    mv squashfs-root /usr/local/cursor && \
+    chown -R coder:coder /usr/local/cursor && \
+    rm /tmp/cursor.app
 
-ENV APPDIR=/usr/local/cursor
+# Copy cursor startup script
+COPY cursor-ubuntu.sh /bin/cursor.sh
+RUN chmod +x /bin/cursor.sh && \
+    chown coder:coder /bin/cursor.sh
 
-# Set environment variable for X11 display
-ENV DISPLAY=:0
+# Create desktop shortcut for Cursor
+RUN mkdir -p /home/coder/Desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/cursor.desktop && \
+    echo "Name=Cursor" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Exec=/bin/cursor.sh" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Categories=Development;" >> /home/coder/Desktop/cursor.desktop && \
+    chmod +x /home/coder/Desktop/cursor.desktop && \
+    chown -R coder:coder /home/coder/Desktop
 
-COPY cursor.sh /bin/cursor.sh
+# Expose XRDP port
+EXPOSE 3389
 
-RUN chmod +x /bin/cursor.sh
-
-# Start the application
-CMD ["cursor.sh"]
+# Set entrypoint to supervisord
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

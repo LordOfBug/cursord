@@ -170,6 +170,25 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "user=root" >> /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf
 
+# Configure DBus
+RUN mkdir -p /var/run/dbus && \
+    chown -R dbus:dbus /var/run/dbus && \
+    dbus-uuidgen > /etc/machine-id && \
+    echo '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">' > /etc/dbus-1/system.conf && \
+    echo '<busconfig>' >> /etc/dbus-1/system.conf && \
+    echo '  <type>system</type>' >> /etc/dbus-1/system.conf && \
+    echo '  <user>dbus</user>' >> /etc/dbus-1/system.conf && \
+    echo '  <fork/>' >> /etc/dbus-1/system.conf && \
+    echo '  <listen>unix:path=/var/run/dbus/system_bus_socket</listen>' >> /etc/dbus-1/system.conf && \
+    echo '  <standard_system_servicedirs/>' >> /etc/dbus-1/system.conf && \
+    echo '  <policy context="default">' >> /etc/dbus-1/system.conf && \
+    echo '    <allow user="*"/>' >> /etc/dbus-1/system.conf && \
+    echo '  </policy>' >> /etc/dbus-1/system.conf && \
+    echo '</busconfig>' >> /etc/dbus-1/system.conf
+
+# Update supervisord DBus configuration
+RUN sed -i 's|command=/usr/bin/dbus-daemon --system --nofork|command=/usr/bin/dbus-daemon --system --nofork --nopidfile|' /etc/supervisord.conf
+
 # Set up required directories and permissions
 RUN mkdir -p /tmp/.X11-unix && \
     chmod 1777 /tmp/.X11-unix && \
