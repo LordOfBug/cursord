@@ -9,66 +9,86 @@ This project provides a Docker container that allows you to run [Cursor](https:/
 - Testing Cursor in Ubuntu without modifying your host system
 - Ensuring consistent development environment across different machines
 
-The prebuild version is availabe on docker hub as [buglord/cursord:latest](https://hub.docker.com/r/buglord/cursord)
+The prebuild version is available on Docker Hub as [buglord/cursord:latest](https://hub.docker.com/r/buglord/cursord)
 
-### Latest Update
-On Mac, XQuartz is slow so I decided to build the full desktop version with Ubuntu
-- Desktop version: [buglord/cursord:ubuntu](https://hub.docker.com/r/buglord/cursord)
+## Quick Start with Desktop Version
 
-1. Start the container
+The desktop version provides a full Ubuntu desktop environment accessible via RDP:
+
+1. Pull and run the container:
    ```bash
-   docker run -d -p 3389:3389 buglord/cursord:ubuntu
+   docker run -d -p 3389:3389 buglord/cursord:latest
    ```
 
-2. Use your remote desktop to connect to 3389 port. use coder:coder to login, that's all
+2. Connect using any RDP client:
+   - Host: `localhost` (or your server IP)
+   - Port: `3389`
+   - Username: `coder`
+   - Password: `coder`
 
+## Features
 
-## How to run on MacOS
+- Ubuntu 22.04 base with XFCE4 desktop environment
+- Pre-installed Cursor editor with desktop shortcut
+- Google Chrome browser
+- Remote access via RDP
+- Automatic version tracking and builds
 
-1. Prerequisites:
-   - Docker Desktop for Mac installed
-   - XQuartz installed (for X11 forwarding)
+## Building Locally
 
-2. Install XQuartz:
+1. Clone this repository:
    ```bash
-   brew install --cask xquartz
+   git clone https://github.com/yourusername/cursor-docker.git
+   cd cursor-docker
    ```
 
-3. Configure XQuartz:
-   - Open XQuartz
-   - Go to XQuartz > Preferences
-   - Go to the Security tab
-   - Check "Allow connections from network clients"
-   - Restart XQuartz
-
-4. Allow X11 forwarding:
+2. Build using the provided script:
    ```bash
-   xhost +localhost
+   # Build with latest Cursor version
+   ./build.sh
+
+   # Or specify a version
+   ./build.sh 0.46
    ```
 
-5. Build and run the container:
-   ```bash
-   docker build -t cursord .
-   docker run -e DISPLAY=host.docker.internal:0 -v /tmp/.X11-unix:/tmp/.X11-unix cursord
-   ```
+## Automated Builds
 
-## How to run on Linux
+This repository includes GitHub Actions workflow that:
+- Checks for new Cursor versions every 12 hours
+- Automatically builds and pushes new versions to Docker Hub
+- Maintains the `latest` tag
+- Allows manual workflow triggers
 
-1. Prerequisites:
-   - Docker installed
-   - X11 installed (comes with most Linux distributions)
+## Troubleshooting
 
-2. Allow X11 forwarding:
-   ```bash
-   xhost +local:
-   ```
+### Common Issues
 
-3. Build and run the container:
-   ```bash
-   docker build -t cursord .
-   docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix cursord
-   ```
+1. RDP Connection Failed
+   - Ensure port 3389 is not blocked by firewall
+   - Check if container is running: `docker ps`
+   - Check container logs: `docker logs cursor`
 
-## Note
+2. Cursor Not Starting
+   - Check container logs
+   - Ensure container has enough resources
+   - Try restarting the container
 
-Last updated: January 8, 2025
+### Resource Requirements
+
+- Minimum 4GB RAM recommended
+- At least 10GB disk space
+- Docker 20.10 or newer
+
+## Security Note
+
+The default password is set for convenience. For production use, consider:
+- Changing the default password
+- Using environment variables for credentials
+- Implementing proper authentication mechanisms
+- Securing RDP access behind a VPN
+
+## License
+
+[MIT License](LICENSE)
+
+Last updated: January 8, 2024
