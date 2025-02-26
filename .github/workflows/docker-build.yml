@@ -2,18 +2,35 @@ name: Docker Build and Push
 
 on:
   schedule:
-    - cron: '0 */12 * * *'  # Run every 12 hours
+    - cron: '0 0 * * *'  # Run at 00:00 UTC every day
   workflow_dispatch:  # Allow manual triggers
+  push:
+    branches: [ "main" ]  # Run on pushes to main branch
+    paths:
+      - 'Dockerfile*'     # Run when Dockerfiles change
+      - 'build.sh'        # Run when build script changes
+      - '.github/workflows/*.yml'  # Run when workflows change
 
 env:
-  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-  DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-  IMAGE_NAME: ${{ secrets.DOCKER_HUB_USERNAME }}/cursord
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/cursord
 
 jobs:
   check-and-build:
     runs-on: ubuntu-latest
     steps:
+      - name: Verify Docker Hub credentials
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            echo "Error: DOCKERHUB_USERNAME secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "Error: DOCKERHUB_TOKEN secret is not set"
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -34,10 +51,15 @@ jobs:
           echo "CURSOR_VERSION=${LATEST_VERSION}" >> $GITHUB_ENV
           echo "Latest version: ${LATEST_VERSION}"
 
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Check if Docker image exists
         id: check_image
         run: |
-          echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
           if docker manifest inspect ${{ env.IMAGE_NAME }}:v${CURSOR_VERSION} > /dev/null 2>&1; then
             echo "Image already exists, skipping build"
             echo "EXISTS=true" >> $GITHUB_ENV
