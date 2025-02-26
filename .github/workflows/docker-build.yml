@@ -20,8 +20,17 @@ jobs:
       - name: Get latest Cursor version
         id: version
         run: |
-          LATEST_VERSION=$(curl -s https://api.github.com/repos/getcursor/cursor/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-          LATEST_VERSION=${LATEST_VERSION#v}  # Remove 'v' prefix if present
+          # Fetch the changelog page
+          CHANGELOG=$(curl -s -L https://www.cursor.com/changelog)
+          
+          # Extract version using the same pattern as build.sh
+          LATEST_VERSION=$(echo "$CHANGELOG" | grep -o 'uppercase">[0-9]\+\.[0-9]\+<' | head -n 1 | sed 's/uppercase">//;s/<$//' | tr -d '\n\r')
+          
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Failed to extract version from changelog"
+            exit 1
+          fi
+          
           echo "CURSOR_VERSION=${LATEST_VERSION}" >> $GITHUB_ENV
           echo "Latest version: ${LATEST_VERSION}"
 

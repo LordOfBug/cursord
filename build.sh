@@ -1,14 +1,26 @@
 #!/bin/bash
 
-# Function to get latest Cursor version from GitHub
+# Function to get latest Cursor version from changelog
 get_latest_cursor_version() {
-    # Fetch the latest release version from GitHub API
-    local version=$(curl -s https://api.github.com/repos/getcursor/cursor/releases/latest | grep -o '"tag_name": *"[^"]*"' | grep -o '[0-9.]*')
+    # Send status messages to stderr so they don't get captured in VERSION
+    echo "Fetching latest version from Cursor changelog..." >&2
+    
+    # Fetch the changelog page
+    local changelog=$(curl -s -L https://www.cursor.com/changelog)
+    
+    # Extract version - looking for pattern like 'uppercase">0.46<'
+    local version=$(echo "$changelog" | grep -o 'uppercase">[0-9]\+\.[0-9]\+<' | head -n 1 | sed 's/uppercase">//;s/<$//' | tr -d '\n\r')
+    
     if [ -z "$version" ]; then
-        echo "Error: Could not fetch version from GitHub" >&2
-        exit 1
+        echo "Failed to extract version from changelog" >&2
+        return 1
     fi
-    echo "$version"
+    
+    # Send status message to stderr
+    echo "Found version: $version" >&2
+    
+    # Only output the version number itself to stdout
+    echo -n "$version"
 }
 
 # Get the version - either from command line argument or fetch latest
@@ -27,6 +39,8 @@ fi
 # Validate version format
 if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+$ ]]; then
     echo "Error: Invalid version format. Expected format: X.Y (e.g., 0.46)"
+    echo "Debug: VERSION='${VERSION}'"
+    echo "Debug: length=$(echo -n "$VERSION" | wc -c)"
     exit 1
 fi
 
