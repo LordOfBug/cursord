@@ -105,6 +105,11 @@ RUN mkdir -p /home/coder/Desktop && \
     chmod +x /home/coder/Desktop/cursor.desktop && \
     chown -R coder:coder /home/coder/Desktop
 
+# Copy and setup upgrade script
+COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
+RUN chmod +x /bin/upgrade-cursor.sh && \
+    chown coder:coder /bin/upgrade-cursor.sh
+
 # Expose XRDP port
 EXPOSE 3389
 

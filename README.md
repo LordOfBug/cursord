@@ -33,6 +33,24 @@ The desktop version provides a full Ubuntu desktop environment accessible via RD
 - Google Chrome browser
 - Remote access via RDP
 - Automatic version tracking and builds
+- Easy in-container Cursor upgrades
+
+## Upgrading Cursor
+
+To upgrade your Cursor installation to the latest version:
+
+1. Connect to the container via RDP
+2. Open a terminal
+3. Run the upgrade script:
+   ```bash
+   /bin/upgrade-cursor.sh
+   ```
+
+The upgrade process will:
+- Download the latest version
+- Safely close any running Cursor instances
+- Install the new version
+- Preserve your settings
 
 ## Building Locally
 
