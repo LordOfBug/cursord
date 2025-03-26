@@ -59,52 +59,13 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/bin/google-chrome-stable 500 && \
     xdg-settings set default-web-browser google-chrome.desktop
 
+# Copy Chrome extension setup script
+COPY setup-chrome-extensions.sh /tmp/setup-chrome-extensions.sh
+
 # Install Chrome extensions for the default user
-RUN mkdir -p /home/coder/.config/google-chrome/Default/Extensions && \
-    # Create preferences file with forced extensions
-    mkdir -p /home/coder/.config/google-chrome/Default && \
-    echo '{' > /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '  "extensions": {' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '    "settings": {' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    # uBlock Origin
-    echo '      "cjpalhdlnbpafiamejdnhcphjbkeiagm": {' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "location": 1,' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "granted_permissions": {"api":["tabs"],"explicit_host":["*://*/*"]},' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "path": "cjpalhdlnbpafiamejdnhcphjbkeiagm/1.52.2_0",' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "state": 1' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '      },' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    # Dark Reader
-    echo '      "eimadpbcbfnmbkopoojfekhnkhdbieeh": {' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "location": 1,' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "granted_permissions": {"api":["tabs"],"explicit_host":["*://*/*"]},' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "path": "eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.67_0",' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "state": 1' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '      },' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    # Proxy SwitchyOmega
-    echo '      "padekgcemlokbadohgkifijomclgjgif": {' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "location": 1,' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "granted_permissions": {"api":["proxy","tabs","webRequest","webRequestBlocking"],"explicit_host":["*://*/*"]},' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "path": "padekgcemlokbadohgkifijomclgjgif/2.5.21_0",' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '        "state": 1' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '      }' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '    }' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '  }' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    echo '}' >> /home/coder/.config/google-chrome/Default/Preferences && \
-    # Download and extract extensions
-    mkdir -p /home/coder/.config/google-chrome/Default/Extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm && \
-    wget -O /tmp/ublock.zip "https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx2,crx3&x=id%3Dcjpalhdlnbpafiamejdnhcphjbkeiagm%26uc" && \
-    unzip /tmp/ublock.zip -d /home/coder/.config/google-chrome/Default/Extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm && \
-    mkdir -p /home/coder/.config/google-chrome/Default/Extensions/eimadpbcbfnmbkopoojfekhnkhdbieeh && \
-    wget -O /tmp/darkreader.zip "https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx2,crx3&x=id%3Deimadpbcbfnmbkopoojfekhnkhdbieeh%26uc" && \
-    unzip /tmp/darkreader.zip -d /home/coder/.config/google-chrome/Default/Extensions/eimadpbcbfnmbkopoojfekhnkhdbieeh && \
-    # Download and extract SwitchyOmega
-    mkdir -p /home/coder/.config/google-chrome/Default/Extensions/padekgcemlokbadohgkifijomclgjgif && \
-    wget -O /tmp/switchyomega.zip "https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx2,crx3&x=id%3Dpadekgcemlokbadohgkifijomclgjgif%26uc" && \
-    unzip /tmp/switchyomega.zip -d /home/coder/.config/google-chrome/Default/Extensions/padekgcemlokbadohgkifijomclgjgif && \
-    # Set permissions
-    chown -R coder:coder /home/coder/.config && \
-    # Cleanup
-    rm -f /tmp/ublock.zip /tmp/darkreader.zip /tmp/switchyomega.zip
+RUN chmod +x /tmp/setup-chrome-extensions.sh && \
+    /tmp/setup-chrome-extensions.sh && \
+    rm /tmp/setup-chrome-extensions.sh
 
 # Configure XRDP
 RUN adduser xrdp ssl-cert && \
