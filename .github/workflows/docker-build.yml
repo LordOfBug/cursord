@@ -46,19 +46,37 @@ jobs:
       - name: Get latest Cursor version
         id: version
         run: |
-          # Fetch the changelog page
-          CHANGELOG=$(curl -s -L https://www.cursor.com/changelog)
+          # Fetch version info from cursor-ai-downloads
+          VERSION_INFO=$(curl -s -L "https://raw.githubusercontent.com/oslook/cursor-ai-downloads/main/version-history.json")
           
-          # Extract version using the same pattern as build.sh
-          LATEST_VERSION=$(echo "$CHANGELOG" | grep -o 'uppercase">[0-9]\+\.[0-9]\+<' | head -n 1 | sed 's/uppercase">//;s/<$//' | tr -d '\n\r')
-          
-          if [ -z "$LATEST_VERSION" ]; then
-            echo "Failed to extract version from changelog"
+          if [ -z "$VERSION_INFO" ]; then
+            echo "Failed to fetch version info"
             exit 1
           fi
           
+          # Extract the latest version using jq for more reliable JSON parsing
+          sudo apt-get update && sudo apt-get install -y jq
+          
+          LATEST_VERSION=$(echo "$VERSION_INFO" | jq -r '.[0].version')
+          if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
+            echo "Failed to extract version from version info"
+            exit 1
+          fi
+          
+          # Get Linux x64 download URL
+          LINUX_URL=$(echo "$VERSION_INFO" | jq -r '.[0]."linux-x64"')
+          if [ -z "$LINUX_URL" ] || [ "$LINUX_URL" = "null" ]; then
+            echo "Failed to extract Linux download URL"
+            exit 1
+          fi
+          
+          # Export variables
           echo "CURSOR_VERSION=${LATEST_VERSION}" >> $GITHUB_ENV
+          echo "CURSOR_DOWNLOAD_URL=${LINUX_URL}" >> $GITHUB_ENV
+          
+          # Debug output
           echo "Latest version: ${LATEST_VERSION}"
+          echo "Linux x64 download URL: ${LINUX_URL}"
 
       - name: Docker Login
         uses: docker/login-action@v3
@@ -89,6 +107,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            CURSOR_DOWNLOAD_URL=${{ env.CURSOR_DOWNLOAD_URL }}
           tags: |
             ${{ env.IMAGE_NAME }}:v${{ env.CURSOR_VERSION }}
             ${{ env.IMAGE_NAME }}:latest
@@ -117,6 +137,8 @@ jobs:
           context: .
           file: Dockerfile.ubuntu
           push: true
+          build-args: |
+            CURSOR_DOWNLOAD_URL=${{ env.CURSOR_DOWNLOAD_URL }}
           tags: |
             ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.CURSOR_VERSION }}
             ${{ env.IMAGE_NAME }}:ubuntu-latest

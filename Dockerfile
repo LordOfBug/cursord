@@ -4,6 +4,12 @@ FROM ubuntu:22.04
 # Set non-interactive mode for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Add build argument for Cursor download URL
+ARG CURSOR_DOWNLOAD_URL
+
+# Verify build argument is provided
+RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument is required" && false)
+
 # Install essential dependencies
 RUN apt update && apt install -y \
     vim \
@@ -81,7 +87,7 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
 # Download cursor from cursor.sh
-RUN wget -O /tmp/cursor.app https://downloader.cursor.sh/linux && \
+RUN wget -O /tmp/cursor.app "${CURSOR_DOWNLOAD_URL}" && \
     chmod +x /tmp/cursor.app && \
     /tmp/cursor.app --appimage-extract && \
     mv squashfs-root /usr/local/cursor && \
