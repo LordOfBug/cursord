@@ -1,5 +1,7 @@
-# Use Ubuntu base image
-FROM buglord/cursord:latest
+# Use configurable base image
+ARG BASE_IMAGE=buglord/cursord
+ARG BASE_TAG=latest
+FROM ${BASE_IMAGE}:${BASE_TAG}
 
 # Install windsurf
 RUN wget -O /tmp/windsurf.tar.gz https://windsurf-stable.codeiumdata.com/linux-x64/stable/b3241b91445f79878ccc91626dfe190f90563e53/Windsurf-linux-x64-1.5.9.tar.gz && \

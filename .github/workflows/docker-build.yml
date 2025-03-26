@@ -156,6 +156,8 @@ jobs:
           push: true
           build-args: |
             CURSOR_DOWNLOAD_URL=${{ env.CURSOR_DOWNLOAD_URL }}
+            BASE_IMAGE=${{ env.IMAGE_NAME }}
+            BASE_TAG=v${{ env.CURSOR_VERSION }}
           tags: |
             ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.CURSOR_VERSION }}
             ${{ env.IMAGE_NAME }}:ubuntu-latest

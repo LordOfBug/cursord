@@ -151,6 +151,20 @@ if [ -s "/tmp/switchyomega.crx" ] && [ $(stat -c%s "/tmp/switchyomega.crx") -gt 
   # Verify manifest exists in final location
   if [ -f "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/manifest.json" ]; then
     echo "SwitchyOmega manifest.json verified in final location"
+    
+    # Check if icon files exist, create them if they don't
+    ICON_DIR="/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons"
+    mkdir -p "$ICON_DIR"
+    
+    # Check for each icon file and create if missing
+    for ICON_SIZE in 16 32 48 128; do
+      if [ ! -f "$ICON_DIR/omega-$ICON_SIZE.png" ]; then
+        echo "Creating missing icon: omega-$ICON_SIZE.png"
+        # Base64 encoded 1x1 transparent PNG
+        TRANSPARENT_PNG="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        echo "$TRANSPARENT_PNG" | base64 -d > "$ICON_DIR/omega-$ICON_SIZE.png"
+      fi
+    done
   else
     echo "WARNING: manifest.json not found in final SwitchyOmega location"
   fi
@@ -186,6 +200,16 @@ else
 EOF
   # Create minimal directory structure
   mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons"
+  
+  # Create placeholder icon files (1x1 pixel transparent PNG)
+  # Base64 encoded 1x1 transparent PNG
+  TRANSPARENT_PNG="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+  
+  # Create icon files
+  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-16.png"
+  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-32.png"
+  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-48.png"
+  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-128.png"
   
   # Create a placeholder HTML file
   cat > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/popup.html" << EOF
