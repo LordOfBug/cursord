@@ -54,19 +54,50 @@ jobs:
             exit 1
           fi
           
-          # Extract the latest version using jq for more reliable JSON parsing
+          # Install jq if needed
           sudo apt-get update && sudo apt-get install -y jq
           
-          LATEST_VERSION=$(echo "$VERSION_INFO" | jq -r '.[0].version')
+          # Debug: Show the structure of the JSON
+          echo "JSON structure:"
+          echo "$VERSION_INFO" | jq 'keys'
+          
+          # Extract the latest version - try different JSON paths
+          LATEST_VERSION=$(echo "$VERSION_INFO" | jq -r '
+            if type == "array" then
+              .[0].version
+            elif has("latest") then
+              .latest.version
+            elif has("version") then
+              .version
+            else
+              null
+            end
+          ')
+          
           if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
             echo "Failed to extract version from version info"
+            echo "Raw JSON content:"
+            echo "$VERSION_INFO" | jq '.'
             exit 1
           fi
           
-          # Get Linux x64 download URL
-          LINUX_URL=$(echo "$VERSION_INFO" | jq -r '.[0]."linux-x64"')
+          # Get Linux x64 download URL with similar fallback logic
+          LINUX_URL=$(echo "$VERSION_INFO" | jq -r '
+            if type == "array" then
+              .[0]."linux-x64"
+            elif has("latest") then
+              .latest."linux-x64"
+            elif has("linux-x64") then
+              ."linux-x64"
+            else
+              null
+            end
+          ')
+          
           if [ -z "$LINUX_URL" ] || [ "$LINUX_URL" = "null" ]; then
             echo "Failed to extract Linux download URL"
+            echo "Raw JSON content:"
+            echo "$VERSION_INFO" | jq '.'
             exit 1
           fi
           

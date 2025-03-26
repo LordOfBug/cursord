@@ -5,7 +5,7 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Add build argument for Cursor download URL
-ARG CURSOR_DOWNLOAD_URL
+ARG CURSOR_DOWNLOAD_URL=https://downloader.cursor.sh/linux
 
 # Verify build argument is provided
 RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument is required" && false)
