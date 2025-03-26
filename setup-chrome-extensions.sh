@@ -169,60 +169,7 @@ if [ -s "/tmp/switchyomega.crx" ] && [ $(stat -c%s "/tmp/switchyomega.crx") -gt 
     echo "WARNING: manifest.json not found in final SwitchyOmega location"
   fi
 else
-  echo "Direct download failed, using pre-packaged version..."
-  # Create a basic manifest.json for SwitchyOmega
-  mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}"
-  cat > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/manifest.json" << EOF
-{
-  "name": "Proxy SwitchyOmega",
-  "version": "${SWITCHYOMEGA_VERSION%_*}",
-  "manifest_version": 3,
-  "description": "Manage and switch between multiple proxies quickly & easily.",
-  "icons": {
-    "16": "img/icons/omega-16.png",
-    "32": "img/icons/omega-32.png",
-    "48": "img/icons/omega-48.png",
-    "128": "img/icons/omega-128.png"
-  },
-  "action": {
-    "default_icon": "img/icons/omega-32.png",
-    "default_title": "SwitchyOmega",
-    "default_popup": "popup.html"
-  },
-  "permissions": [
-    "proxy",
-    "tabs",
-    "webRequestBlocking",
-    "<all_urls>"
-  ]
-}
-EOF
-  # Create minimal directory structure
-  mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons"
-  
-  # Create placeholder icon files (1x1 pixel transparent PNG)
-  # Base64 encoded 1x1 transparent PNG
-  TRANSPARENT_PNG="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-  
-  # Create icon files
-  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-16.png"
-  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-32.png"
-  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-48.png"
-  echo "$TRANSPARENT_PNG" | base64 -d > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons/omega-128.png"
-  
-  # Create a placeholder HTML file
-  cat > "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/popup.html" << EOF
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>SwitchyOmega Popup</title>
-</head>
-<body>
-  <div>SwitchyOmega Placeholder</div>
-</body>
-</html>
-EOF
+  echo "Direct download failed, no switchyomega available ..."
 fi
 
 # Set permissions
