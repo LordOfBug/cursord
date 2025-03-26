@@ -118,6 +118,11 @@ RUN mkdir -p /home/coder/Desktop && \
     chmod +x /home/coder/Desktop/cursor.desktop && \
     chown -R coder:coder /home/coder/Desktop
 
+# Copy and setup upgrade script
+COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
+RUN chmod +x /bin/upgrade-cursor.sh && \
+    chown coder:coder /bin/upgrade-cursor.sh
+
 # Install windsurf
 RUN wget -O /tmp/windsurf.tar.gz https://windsurf-stable.codeiumdata.com/linux-x64/stable/b3241b91445f79878ccc91626dfe190f90563e53/Windsurf-linux-x64-1.5.9.tar.gz && \
     tar -xzvf /tmp/windsurf.tar.gz && \
