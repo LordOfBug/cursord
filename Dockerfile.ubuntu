@@ -134,10 +134,6 @@ RUN mkdir -p /home/coder/Desktop && \
     chmod +x /home/coder/Desktop/windsurf.desktop && \
     chown -R coder:coder /home/coder/Desktop
 
-# Initialize dbus
-RUN dbus-uuidgen > /var/lib/dbus/machine-id && \
-    mkdir -p /run/dbus
-
 # Configure windsurf:// protocol handler
 RUN mkdir -p /usr/share/applications && \
     echo "[Desktop Entry]" > /usr/share/applications/windsurf-protocol-handler.desktop && \
