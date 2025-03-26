@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Run at 00:00 UTC every day
   workflow_dispatch:  # Allow manual triggers
+    inputs:
+      build_ubuntu:
+        description: 'Build Ubuntu image'
+        type: boolean
+        default: false
+      build_default:
+        description: 'Build default image'
+        type: boolean
+        default: true
   push:
     branches: [ "main" ]  # Run on pushes to main branch
     paths:
@@ -57,8 +66,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Check if Docker image exists
-        id: check_image
+      # Default image build
+      - name: Check if default Docker image exists
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_default }}
+        id: check_default_image
         run: |
           if docker manifest inspect ${{ env.IMAGE_NAME }}:v${CURSOR_VERSION} > /dev/null 2>&1; then
             echo "Image already exists, skipping build"
@@ -68,12 +79,12 @@ jobs:
             echo "EXISTS=false" >> $GITHUB_ENV
           fi
 
-      - name: Set up Docker Buildx
-        if: env.EXISTS == 'false'
+      - name: Set up Docker Buildx for default image
+        if: env.EXISTS == 'false' && (github.event_name != 'workflow_dispatch' || inputs.build_default)
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push Docker image
-        if: env.EXISTS == 'false'
+      - name: Build and push default Docker image
+        if: env.EXISTS == 'false' && (github.event_name != 'workflow_dispatch' || inputs.build_default)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -81,6 +92,34 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:v${{ env.CURSOR_VERSION }}
             ${{ env.IMAGE_NAME }}:latest
+
+      # Ubuntu image build
+      - name: Check if Ubuntu Docker image exists
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_ubuntu }}
+        id: check_ubuntu_image
+        run: |
+          if docker manifest inspect ${{ env.IMAGE_NAME }}:ubuntu-v${CURSOR_VERSION} > /dev/null 2>&1; then
+            echo "Ubuntu image already exists, skipping build"
+            echo "UBUNTU_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "Ubuntu image does not exist, will build"
+            echo "UBUNTU_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Set up Docker Buildx for Ubuntu image
+        if: env.UBUNTU_EXISTS == 'false' && (github.event_name != 'workflow_dispatch' || inputs.build_ubuntu)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Ubuntu Docker image
+        if: env.UBUNTU_EXISTS == 'false' && (github.event_name != 'workflow_dispatch' || inputs.build_ubuntu)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.ubuntu
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.CURSOR_VERSION }}
+            ${{ env.IMAGE_NAME }}:ubuntu-latest
 
       - name: Log out from Docker Hub
         if: always()
