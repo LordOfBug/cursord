@@ -14,6 +14,8 @@ RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument 
 RUN apt update && apt install -y \
     vim \
     wget \
+    curl \
+    unzip \
     sudo \
     xorg \
     xrdp \
