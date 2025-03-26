@@ -100,7 +100,10 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_default }}
         id: check_default_image
         run: |
-          if docker manifest inspect ${{ env.IMAGE_NAME }}:v${CURSOR_VERSION} > /dev/null 2>&1; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger - skipping version check"
+            echo "EXISTS=false" >> $GITHUB_ENV
+          elif docker manifest inspect ${{ env.IMAGE_NAME }}:v${CURSOR_VERSION} > /dev/null 2>&1; then
             echo "Image already exists, skipping build"
             echo "EXISTS=true" >> $GITHUB_ENV
           else
@@ -129,7 +132,10 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_ubuntu }}
         id: check_ubuntu_image
         run: |
-          if docker manifest inspect ${{ env.IMAGE_NAME }}:ubuntu-v${CURSOR_VERSION} > /dev/null 2>&1; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger - skipping version check"
+            echo "UBUNTU_EXISTS=false" >> $GITHUB_ENV
+          elif docker manifest inspect ${{ env.IMAGE_NAME }}:ubuntu-v${CURSOR_VERSION} > /dev/null 2>&1; then
             echo "Ubuntu image already exists, skipping build"
             echo "UBUNTU_EXISTS=true" >> $GITHUB_ENV
           else
