@@ -134,7 +134,7 @@ RUN chmod +x /bin/windsurf.sh && \
 RUN mkdir -p /home/coder/Desktop && \
     echo "[Desktop Entry]" > /home/coder/Desktop/windsurf.desktop && \
     echo "Name=Windsurf" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Exec=bash -c 'eval \$(dbus-launch --sh-syntax); eval \$(gnome-keyring-daemon --start --components=secrets); /bin/windsurf.sh'" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Exec=/bin/windsurf.sh" >> /home/coder/Desktop/windsurf.desktop && \
     echo "Icon=/usr/local/windsurf/resources/app/resources/linux/code.png" >> /home/coder/Desktop/windsurf.desktop && \
     echo "Type=Application" >> /home/coder/Desktop/windsurf.desktop && \
     echo "Categories=Development;" >> /home/coder/Desktop/windsurf.desktop && \
