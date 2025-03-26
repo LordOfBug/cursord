@@ -176,7 +176,7 @@ else
 {
   "name": "Proxy SwitchyOmega",
   "version": "${SWITCHYOMEGA_VERSION%_*}",
-  "manifest_version": 2,
+  "manifest_version": 3,
   "description": "Manage and switch between multiple proxies quickly & easily.",
   "icons": {
     "16": "img/icons/omega-16.png",
@@ -184,7 +184,7 @@ else
     "48": "img/icons/omega-48.png",
     "128": "img/icons/omega-128.png"
   },
-  "browser_action": {
+  "action": {
     "default_icon": "img/icons/omega-32.png",
     "default_title": "SwitchyOmega",
     "default_popup": "popup.html"
@@ -192,7 +192,6 @@ else
   "permissions": [
     "proxy",
     "tabs",
-    "webRequest",
     "webRequestBlocking",
     "<all_urls>"
   ]
