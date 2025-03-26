@@ -59,6 +59,13 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/bin/google-chrome-stable 500 && \
     xdg-settings set default-web-browser google-chrome.desktop
 
+# Copy Chrome extension setup script
+COPY setup-chrome-extensions.sh /tmp/setup-chrome-extensions.sh
+
+# Install Chrome extensions for the default user
+RUN chmod +x /tmp/setup-chrome-extensions.sh && \
+    /tmp/setup-chrome-extensions.sh && \
+    rm /tmp/setup-chrome-extensions.sh
 
 # Configure XRDP
 RUN adduser xrdp ssl-cert && \
