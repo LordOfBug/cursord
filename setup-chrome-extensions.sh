@@ -181,4 +181,4 @@ rm -f /tmp/ublock.zip /tmp/darkreader.zip /tmp/switchyomega.zip /tmp/switchyomeg
 # Now ask chrome to load switchyometa extention by default. We re-create google-chrome-stable created in Dockerfile
 echo '#!/bin/bash' > /usr/bin/google-chrome-stable
 echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type --load-extension=~/.config/google-chrome/Default/Extensions/padekgcemlokbadohgkifijomclgjgif/2.5.21_0/ "$@"' >> /usr/bin/google-chrome-stable
-chmod +x /usr/bin/google-chrome-stable && \
+chmod +x /usr/bin/google-chrome-stable
