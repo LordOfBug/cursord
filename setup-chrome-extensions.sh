@@ -9,8 +9,8 @@ UBLOCK_ID="cjpalhdlnbpafiamejdnhcphjbkeiagm"
 UBLOCK_VERSION="1.52.2_0"
 DARKREADER_ID="eimadpbcbfnmbkopoojfekhnkhdbieeh"
 DARKREADER_VERSION="4.9.67_0"
-SWITCHYOMEGA_ID="padekgcemlokbadohgkifijomclgjgif"
-SWITCHYOMEGA_VERSION="2.5.21_0"
+ZEROOMEGA_ID="hhggepcibhpnoapgampbmkpgbpbgkiph"
+ZEROOMEGA_VERSION="2.6.0_0"
 
 # Create Chrome preferences file with extensions
 cat > /home/coder/.config/google-chrome/Default/Preferences << EOL
@@ -29,10 +29,10 @@ cat > /home/coder/.config/google-chrome/Default/Preferences << EOL
         "path": "${DARKREADER_ID}/${DARKREADER_VERSION}",
         "state": 1
       },
-      "${SWITCHYOMEGA_ID}": {
+      "${ZEROOMEGA_ID}": {
         "location": 1,
         "granted_permissions": {"api":["proxy","tabs","webRequest","webRequestBlocking"],"explicit_host":["*://*/*"]},
-        "path": "${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}",
+        "path": "${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}",
         "state": 1
       }
     }
@@ -111,49 +111,48 @@ else
   echo "WARNING: manifest.json not found in final Dark Reader location"
 fi
 
-echo "Downloading Proxy SwitchyOmega..."
-mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}"
+echo "Downloading ZeroOmega..."
+mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}"
 
-# Try alternative source for SwitchyOmega
-# First attempt: Direct CRX download from GitHub
-curl -L "https://github.com/FelisCatus/SwitchyOmega/releases/download/v2.5.20/SwitchyOmega_Chromium.crx" -o /tmp/switchyomega.crx
+# Download ZeroOmega from GitHub
+curl -L "https://github.com/zero-peak/ZeroOmega/releases/download/v2.6.0/ZeroOmega_v2.6.0.crx" -o /tmp/zeroomega.crx
 
 # Check if download was successful
-if [ -s "/tmp/switchyomega.crx" ] && [ $(stat -c%s "/tmp/switchyomega.crx") -gt 1000 ]; then
-  echo "Successfully downloaded SwitchyOmega CRX, converting to ZIP..."
+if [ -s "/tmp/zeroomega.crx" ] && [ $(stat -c%s "/tmp/zeroomega.crx") -gt 1000 ]; then
+  echo "Successfully downloaded ZeroOmega CRX, converting to ZIP..."
   # Convert CRX to ZIP by removing the header (first 307 bytes for CRX3)
-  dd if=/tmp/switchyomega.crx of=/tmp/switchyomega.zip bs=307 skip=1
+  dd if=/tmp/zeroomega.crx of=/tmp/zeroomega.zip bs=307 skip=1
   
   # Extract to a temporary directory first to check structure
-  rm -rf /tmp/switchyomega_ext
-  mkdir -p /tmp/switchyomega_ext
-  unzip -o /tmp/switchyomega.zip -d /tmp/switchyomega_ext
+  rm -rf /tmp/zeroomega_ext
+  mkdir -p /tmp/zeroomega_ext
+  unzip -o /tmp/zeroomega.zip -d /tmp/zeroomega_ext
   
   # Check if manifest.json exists directly or in a subdirectory
-  if [ -f "/tmp/switchyomega_ext/manifest.json" ]; then
+  if [ -f "/tmp/zeroomega_ext/manifest.json" ]; then
     # Manifest exists at root, move everything to version directory
-    mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}"
-    cp -r /tmp/switchyomega_ext/* "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/"
-    echo "SwitchyOmega manifest found at root level"
+    mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}"
+    cp -r /tmp/zeroomega_ext/* "/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/"
+    echo "ZeroOmega manifest found at root level"
   else
     # Look for subdirectory with manifest.json
-    MANIFEST_DIR=$(find /tmp/switchyomega_ext -name "manifest.json" -exec dirname {} \; | head -n 1)
+    MANIFEST_DIR=$(find /tmp/zeroomega_ext -name "manifest.json" -exec dirname {} \; | head -n 1)
     if [ -n "$MANIFEST_DIR" ]; then
       # Found manifest in subdirectory, copy that directory's contents
-      mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}"
-      cp -r "$MANIFEST_DIR"/* "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/"
-      echo "SwitchyOmega manifest found in subdirectory: $MANIFEST_DIR"
+      mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}"
+      cp -r "$MANIFEST_DIR"/* "/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/"
+      echo "ZeroOmega manifest found in subdirectory: $MANIFEST_DIR"
     else
-      echo "ERROR: No manifest.json found for SwitchyOmega"
+      echo "ERROR: No manifest.json found for ZeroOmega"
     fi
   fi
   
   # Verify manifest exists in final location
-  if [ -f "/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/manifest.json" ]; then
-    echo "SwitchyOmega manifest.json verified in final location"
+  if [ -f "/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/manifest.json" ]; then
+    echo "ZeroOmega manifest.json verified in final location"
     
     # Check if icon files exist, create them if they don't
-    ICON_DIR="/home/coder/.config/google-chrome/Default/Extensions/${SWITCHYOMEGA_ID}/${SWITCHYOMEGA_VERSION}/img/icons"
+    ICON_DIR="/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/img/icons"
     mkdir -p "$ICON_DIR"
     
     # Check for each icon file and create if missing
@@ -166,19 +165,19 @@ if [ -s "/tmp/switchyomega.crx" ] && [ $(stat -c%s "/tmp/switchyomega.crx") -gt 
       fi
     done
   else
-    echo "WARNING: manifest.json not found in final SwitchyOmega location"
+    echo "WARNING: manifest.json not found in final ZeroOmega location"
   fi
 else
-  echo "Direct download failed, no switchyomega available ..."
+  echo "Direct download failed, no ZeroOmega available ..."
 fi
 
 # Set permissions
 chown -R coder:coder /home/coder/.config
 
 # Cleanup
-rm -f /tmp/ublock.zip /tmp/darkreader.zip /tmp/switchyomega.zip /tmp/switchyomega.crx
+rm -f /tmp/ublock.zip /tmp/darkreader.zip /tmp/zeroomega.zip /tmp/zeroomega.crx
 
-# Now ask chrome to load switchyometa extention by default. We re-create google-chrome-stable created in Dockerfile
+# Now ask chrome to load ZeroOmega extension by default. We re-create google-chrome-stable created in Dockerfile
 echo '#!/bin/bash' > /usr/bin/google-chrome-stable
-echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type --load-extension=~/.config/google-chrome/Default/Extensions/padekgcemlokbadohgkifijomclgjgif/2.5.21_0/ "$@"' >> /usr/bin/google-chrome-stable
+echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type --load-extension=~/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/ "$@"' >> /usr/bin/google-chrome-stable
 chmod +x /usr/bin/google-chrome-stable
