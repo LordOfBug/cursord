@@ -26,6 +26,26 @@ RUN mkdir -p /home/coder/Desktop && \
     chmod +x /home/coder/Desktop/windsurf.desktop && \
     chown -R coder:coder /home/coder/Desktop
 
+# Create windsurf protocol handler script
+RUN echo '#!/bin/bash' > /bin/windsurf-protocol-handler.sh && \
+    echo 'url="$1"' >> /bin/windsurf-protocol-handler.sh && \
+    echo '/bin/windsurf.sh "$url"' >> /bin/windsurf-protocol-handler.sh && \
+    chmod +x /bin/windsurf-protocol-handler.sh
+
+# Configure windsurf:// protocol handler
+RUN mkdir -p /usr/share/applications && \
+    echo "[Desktop Entry]" > /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Name=Windsurf Protocol Handler" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Exec=/bin/windsurf.sh %u" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Type=Application" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Terminal=false" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "MimeType=x-scheme-handler/windsurf;" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Categories=Development;" >> /usr/share/applications/windsurf-protocol-handler.desktop
+
+# Register the protocol handler
+RUN xdg-mime default windsurf-protocol-handler.desktop x-scheme-handler/windsurf && \
+    update-desktop-database /usr/share/applications
+
 # Copy Chrome extension setup script
 COPY setup-chrome-extensions.sh /tmp/setup-chrome-extensions.sh
 
