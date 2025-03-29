@@ -122,6 +122,8 @@ RUN rm -f /etc/machine-id
 
 # Setup supervisord entry for ensure machine id
 COPY ensure_machine_id.sh /usr/bin/ensure_machine_id.sh
+RUN chmod +x /usr/bin/ensure_machine_id.sh
+
 RUN echo "[program:ensure_machine_id]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/bin/ensure_machine_id.sh" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
