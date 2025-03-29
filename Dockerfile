@@ -124,7 +124,7 @@ RUN rm -f /etc/machine-id
 COPY ensure_machine_id.sh /usr/bin/ensure_machine_id.sh
 RUN echo "[program:ensure_machine_id]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/bin/ensure_machine_id.sh" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf
+    echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=false" >> /etc/supervisor/conf.d/supervisord.conf
 
 # Expose XRDP port
