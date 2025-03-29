@@ -117,6 +117,9 @@ COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
 RUN chmod +x /bin/upgrade-cursor.sh && \
     chown coder:coder /bin/upgrade-cursor.sh
 
+# Delete the existing machine-id file. Init system will generate new ones
+RUN rm -f /etc/machine-id
+
 # Expose XRDP port
 EXPOSE 3389
 
