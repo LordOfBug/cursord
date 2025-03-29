@@ -9,8 +9,8 @@ UBLOCK_ID="cjpalhdlnbpafiamejdnhcphjbkeiagm"
 UBLOCK_VERSION="1.52.2_0"
 DARKREADER_ID="eimadpbcbfnmbkopoojfekhnkhdbieeh"
 DARKREADER_VERSION="4.9.67_0"
-ZEROOMEGA_ID="hhggepcibhpnoapgampbmkpgbpbgkiph"
-ZEROOMEGA_VERSION="2.6.0_0"
+ZEROOMEGA_ID="pfnededegaaopdmhkdmcofjmoldfiped"
+ZEROOMEGA_VERSION="3.3.23"
 
 # Create Chrome preferences file with extensions
 cat > /home/coder/.config/google-chrome/Default/Preferences << EOL
@@ -115,7 +115,7 @@ echo "Downloading ZeroOmega..."
 mkdir -p "/home/coder/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}"
 
 # Download ZeroOmega from GitHub
-curl -L "https://github.com/zero-peak/ZeroOmega/releases/download/v2.6.0/ZeroOmega_v2.6.0.crx" -o /tmp/zeroomega.crx
+curl -L "https://github.com/zero-peak/ZeroOmega/releases/download/3.3.23/zeroomega-3.3.23.crx" -o /tmp/zeroomega.crx
 
 # Check if download was successful
 if [ -s "/tmp/zeroomega.crx" ] && [ $(stat -c%s "/tmp/zeroomega.crx") -gt 1000 ]; then
@@ -178,6 +178,6 @@ chown -R coder:coder /home/coder/.config
 rm -f /tmp/ublock.zip /tmp/darkreader.zip /tmp/zeroomega.zip /tmp/zeroomega.crx
 
 # Now ask chrome to load ZeroOmega extension by default. We re-create google-chrome-stable created in Dockerfile
-echo '#!/bin/bash' > /usr/bin/google-chrome-stable
-echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type --load-extension=~/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/ "$@"' >> /usr/bin/google-chrome-stable
+echo "#!/bin/bash" > /usr/bin/google-chrome-stable
+echo "exec /opt/google/chrome/chrome --no-sandbox --test-type --load-extension=~/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/ \"\$@\"" >> /usr/bin/google-chrome-stable
 chmod +x /usr/bin/google-chrome-stable
