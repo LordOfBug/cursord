@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Get latest Cursor version
-        id: version
+        id: cursor_version
         run: |
           # Fetch version info from cursor-ai-downloads
           VERSION_INFO=$(curl -s -L "https://raw.githubusercontent.com/oslook/cursor-ai-downloads/main/version-history.json")
@@ -88,6 +88,39 @@ jobs:
           # Debug output
           echo "Latest version: ${LATEST_VERSION}"
           echo "Linux x64 download URL: ${LINUX_URL}"
+
+      - name: Get latest Windsurf version
+        id: windsurf_version
+        run: |
+          # Fetch the latest version information
+          VERSION_INFO=$(curl -s https://windsurf-stable.codeium.com/api/update/linux-x64/stable/latest)
+          
+          # Extract relevant information using grep and sed
+          WINDSURF_URL=$(echo "$VERSION_INFO" | grep -o '"url":"[^"]*"' | sed 's/"url":"\(.*\)"/\1/')
+          WINDSURF_VERSION=$(echo "$VERSION_INFO" | grep -o '"windsurfVersion":"[^"]*"' | sed 's/"windsurfVersion":"\(.*\)"/\1/')
+          
+          # Validate the output
+          if [ -z "$WINDSURF_URL" ]; then
+            echo "Error: Failed to extract URL from version info"
+            echo "Raw JSON content:"
+            echo "$VERSION_INFO"
+            exit 1
+          fi
+          
+          if [ -z "$WINDSURF_VERSION" ]; then
+            echo "Error: Failed to extract version from version info"
+            echo "Raw JSON content:"
+            echo "$VERSION_INFO"
+            exit 1
+          fi
+          
+          # Export variables
+          echo "WINDSURF_URL=${WINDSURF_URL}" >> $GITHUB_ENV
+          echo "WINDSURF_VERSION=${WINDSURF_VERSION}" >> $GITHUB_ENV
+          
+          # Debug output
+          echo "Latest Windsurf version: ${WINDSURF_VERSION}"
+          echo "Windsurf download URL: ${WINDSURF_URL}"
 
       - name: Docker Login
         uses: docker/login-action@v3
@@ -158,6 +191,8 @@ jobs:
             CURSOR_DOWNLOAD_URL=${{ env.CURSOR_DOWNLOAD_URL }}
             BASE_IMAGE=${{ env.IMAGE_NAME }}
             BASE_TAG=v${{ env.CURSOR_VERSION }}
+            WINDSURF_URL=${{ env.WINDSURF_URL }}
+            WINDSURF_VERSION=${{ env.WINDSURF_VERSION }}
           tags: |
             ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.CURSOR_VERSION }}
             ${{ env.IMAGE_NAME }}:ubuntu-latest

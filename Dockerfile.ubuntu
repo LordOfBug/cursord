@@ -3,8 +3,13 @@ ARG BASE_IMAGE=buglord/cursord
 ARG BASE_TAG=latest
 FROM ${BASE_IMAGE}:${BASE_TAG}
 
-# Install windsurf
-RUN wget -O /tmp/windsurf.tar.gz https://windsurf-stable.codeiumdata.com/linux-x64/stable/69a900001328c5e276063fc33dcff89076073a54/Windsurf-linux-x64-1.7.0.tar.gz && \
+# Define ARGs for Windsurf version and URL
+ARG WINDSURF_URL
+ARG WINDSURF_VERSION
+
+# Install windsurf using provided URL
+RUN echo "Installing Windsurf version: ${WINDSURF_VERSION} from ${WINDSURF_URL}" && \
+    wget -O /tmp/windsurf.tar.gz "${WINDSURF_URL}" && \
     tar -xzvf /tmp/windsurf.tar.gz && \
     mv Windsurf /usr/local/windsurf && \
     chown -R coder:coder /usr/local/windsurf && \
