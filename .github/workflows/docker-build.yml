@@ -95,10 +95,18 @@ jobs:
           # Fetch the latest version information
           VERSION_INFO=$(curl -s https://windsurf-stable.codeium.com/api/update/linux-x64/stable/latest)
           
-          # Extract version information using grep and sed
+          # Extract relevant information using grep and sed
+          WINDSURF_URL=$(echo "$VERSION_INFO" | grep -o '"url":"[^"]*"' | sed 's/"url":"\(.*\)"/\1/')
           WINDSURF_VERSION=$(echo "$VERSION_INFO" | grep -o '"windsurfVersion":"[^"]*"' | sed 's/"windsurfVersion":"\(.*\)"/\1/')
           
           # Validate the output
+          if [ -z "$WINDSURF_URL" ]; then
+            echo "Error: Failed to extract URL from version info"
+            echo "Raw JSON content:"
+            echo "$VERSION_INFO"
+            exit 1
+          fi
+          
           if [ -z "$WINDSURF_VERSION" ]; then
             echo "Error: Failed to extract version from version info"
             echo "Raw JSON content:"
@@ -106,11 +114,13 @@ jobs:
             exit 1
           fi
           
-          # Export variable
+          # Export variables
+          echo "WINDSURF_URL=${WINDSURF_URL}" >> $GITHUB_ENV
           echo "WINDSURF_VERSION=${WINDSURF_VERSION}" >> $GITHUB_ENV
           
           # Debug output
           echo "Latest Windsurf version: ${WINDSURF_VERSION}"
+          echo "Windsurf download URL: ${WINDSURF_URL}"
 
       - name: Docker Login
         uses: docker/login-action@v3
@@ -202,6 +212,7 @@ jobs:
             CURSOR_DOWNLOAD_URL=${{ env.CURSOR_DOWNLOAD_URL }}
             BASE_IMAGE=${{ env.IMAGE_NAME }}
             BASE_TAG=v${{ env.CURSOR_VERSION }}
+            WINDSURF_URL=${{ env.WINDSURF_URL }}
             WINDSURF_VERSION=${{ env.WINDSURF_VERSION }}
           tags: |
             ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.CURSOR_VERSION }}
