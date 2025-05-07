@@ -3,53 +3,19 @@ ARG BASE_IMAGE=buglord/cursord
 ARG BASE_TAG=latest
 FROM ${BASE_IMAGE}:${BASE_TAG}
 
-# Define ARGs for Windsurf version and URL
-ARG WINDSURF_URL
+# Define ARG for Windsurf version (for tagging purposes)
 ARG WINDSURF_VERSION
 
-# Install windsurf using provided URL
-RUN echo "Installing Windsurf version: ${WINDSURF_VERSION} from ${WINDSURF_URL}" && \
-    wget -O /tmp/windsurf.tar.gz "${WINDSURF_URL}" && \
-    tar -xzvf /tmp/windsurf.tar.gz && \
-    mv Windsurf /usr/local/windsurf && \
-    chown -R coder:coder /usr/local/windsurf && \
-    rm /tmp/windsurf.tar.gz
-
-# Copy windsurf startup script
-COPY windsurf-ubuntu.sh /bin/windsurf.sh
-RUN chmod +x /bin/windsurf.sh && \
-    chown coder:coder /bin/windsurf.sh
-
-# Create windsurf desktop entry
-RUN mkdir -p /home/coder/Desktop && \
-    echo "[Desktop Entry]" > /home/coder/Desktop/windsurf.desktop && \
-    echo "Name=Windsurf" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Exec=/bin/windsurf.sh" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Icon=/usr/local/windsurf/resources/app/resources/linux/code.png" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Type=Application" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Categories=Development;" >> /home/coder/Desktop/windsurf.desktop && \
-    chmod +x /home/coder/Desktop/windsurf.desktop && \
-    chown -R coder:coder /home/coder/Desktop
-
-# Create windsurf protocol handler script
-RUN echo '#!/bin/bash' > /bin/windsurf-protocol-handler.sh && \
-    echo 'url="$1"' >> /bin/windsurf-protocol-handler.sh && \
-    echo '/bin/windsurf.sh "$url"' >> /bin/windsurf-protocol-handler.sh && \
-    chmod +x /bin/windsurf-protocol-handler.sh
-
-# Configure windsurf:// protocol handler
-RUN mkdir -p /usr/share/applications && \
-    echo "[Desktop Entry]" > /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Name=Windsurf Protocol Handler" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Exec=/bin/windsurf.sh %u" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Type=Application" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Terminal=false" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "MimeType=x-scheme-handler/windsurf;" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Categories=Development;" >> /usr/share/applications/windsurf-protocol-handler.desktop
-
-# Register the protocol handler
-RUN xdg-mime default windsurf-protocol-handler.desktop x-scheme-handler/windsurf && \
-    update-desktop-database /usr/share/applications
+# Install windsurf using apt repository
+RUN apt-get update && apt-get install -y curl gnupg && \
+    curl -fsSL "https://windsurf-stable.codeiumdata.com/wVxQEIWkwPUEAGf3/windsurf.gpg" | gpg --dearmor -o /usr/share/keyrings/windsurf-stable-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/windsurf-stable-archive-keyring.gpg arch=amd64] https://windsurf-stable.codeiumdata.com/wVxQEIWkwPUEAGf3/apt stable main" | tee /etc/apt/sources.list.d/windsurf.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y windsurf && \
+    echo "Installed Windsurf version: ${WINDSURF_VERSION}" && \
+    mkdir -p /usr/local/windsurf && \
+    ln -sf /usr/bin/windsurf /usr/local/windsurf/ && \
+    chown -R coder:coder /usr/local/windsurf
 
 # Copy Chrome extension setup script
 COPY setup-chrome-extensions.sh /tmp/setup-chrome-extensions.sh
