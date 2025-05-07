@@ -161,19 +161,40 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
 
       # Ubuntu image build
-      - name: Check if Ubuntu Docker image exists
+      - name: Check if Ubuntu Docker images exist
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_ubuntu }}
         id: check_ubuntu_image
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Manual trigger - skipping version check"
             echo "UBUNTU_EXISTS=false" >> $GITHUB_ENV
-          elif docker manifest inspect ${{ env.IMAGE_NAME }}:ubuntu-v${CURSOR_VERSION} > /dev/null 2>&1; then
-            echo "Ubuntu image already exists, skipping build"
-            echo "UBUNTU_EXISTS=true" >> $GITHUB_ENV
           else
-            echo "Ubuntu image does not exist, will build"
-            echo "UBUNTU_EXISTS=false" >> $GITHUB_ENV
+            # Check if both cursor version and windsurf version images exist
+            CURSOR_IMAGE_EXISTS=false
+            WINDSURF_IMAGE_EXISTS=false
+            
+            if docker manifest inspect ${{ env.IMAGE_NAME }}:ubuntu-v${CURSOR_VERSION} > /dev/null 2>&1; then
+              echo "Ubuntu image for Cursor version ${CURSOR_VERSION} already exists"
+              CURSOR_IMAGE_EXISTS=true
+            else
+              echo "Ubuntu image for Cursor version ${CURSOR_VERSION} does not exist"
+            fi
+            
+            if docker manifest inspect ${{ env.IMAGE_NAME }}:ubuntu-windsurf-v${WINDSURF_VERSION} > /dev/null 2>&1; then
+              echo "Ubuntu image for Windsurf version ${WINDSURF_VERSION} already exists"
+              WINDSURF_IMAGE_EXISTS=true
+            else
+              echo "Ubuntu image for Windsurf version ${WINDSURF_VERSION} does not exist"
+            fi
+            
+            # Only skip build if both images exist
+            if [ "$CURSOR_IMAGE_EXISTS" = "true" ] && [ "$WINDSURF_IMAGE_EXISTS" = "true" ]; then
+              echo "Both Cursor and Windsurf version images exist, skipping build"
+              echo "UBUNTU_EXISTS=true" >> $GITHUB_ENV
+            else
+              echo "At least one of the required images does not exist, will build"
+              echo "UBUNTU_EXISTS=false" >> $GITHUB_ENV
+            fi
           fi
 
       - name: Set up Docker Buildx for Ubuntu image
@@ -195,6 +216,7 @@ jobs:
             WINDSURF_VERSION=${{ env.WINDSURF_VERSION }}
           tags: |
             ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.CURSOR_VERSION }}
+            ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.WINDSURF_VERSION }}
             ${{ env.IMAGE_NAME }}:ubuntu-latest
 
       - name: Log out from Docker Hub
