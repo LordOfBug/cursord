@@ -54,6 +54,8 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     apt install -y google-chrome-stable && \
     apt clean && \
     rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /etc/opt/chrome/policies/managed && \
+    chmod 755 /etc/opt/chrome/policies/managed && \
     echo '#!/bin/bash' > /usr/bin/google-chrome-stable && \
     echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type "$@"' >> /usr/bin/google-chrome-stable && \
     chmod +x /usr/bin/google-chrome-stable && \
@@ -116,6 +118,33 @@ RUN mkdir -p /home/coder/Desktop && \
 COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
 RUN chmod +x /bin/upgrade-cursor.sh && \
     chown coder:coder /bin/upgrade-cursor.sh
+
+# Install Visual Studio Code
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list && \
+    apt update && \
+    apt install -y code && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create VSCode startup script
+RUN echo '#!/bin/bash' > /bin/code.sh && \
+    echo 'exec /usr/bin/code --no-sandbox --unity-launch "$@"' >> /bin/code.sh && \
+    chmod +x /bin/code.sh && \
+    chown coder:coder /bin/code.sh
+
+# Create desktop shortcut for VSCode
+RUN echo "[Desktop Entry]" > /home/coder/Desktop/vscode.desktop && \
+    echo "Name=Visual Studio Code" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Comment=Code Editing. Redefined." >> /home/coder/Desktop/vscode.desktop && \
+    echo "Exec=/bin/code.sh" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Icon=/usr/share/code/resources/app/resources/linux/code.png" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Categories=Development;TextEditor;" >> /home/coder/Desktop/vscode.desktop && \
+    echo "StartupNotify=true" >> /home/coder/Desktop/vscode.desktop && \
+    chmod +x /home/coder/Desktop/vscode.desktop && \
+    chown -R coder:coder /home/coder/Desktop
 
 # Delete the existing machine-id file. Init system will generate new ones
 RUN rm -f /etc/machine-id

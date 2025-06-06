@@ -3,6 +3,7 @@
 # Create necessary directories
 mkdir -p /home/coder/.config/google-chrome/Default/Extensions
 mkdir -p /home/coder/.config/google-chrome/Default
+mkdir -p /etc/opt/chrome/policies/managed
 
 # Define extension IDs and versions
 UBLOCK_ID="cjpalhdlnbpafiamejdnhcphjbkeiagm"
@@ -11,6 +12,17 @@ DARKREADER_ID="eimadpbcbfnmbkopoojfekhnkhdbieeh"
 DARKREADER_VERSION="4.9.67_0"
 ZEROOMEGA_ID="pfnededegaaopdmhkdmcofjmoldfiped"
 ZEROOMEGA_VERSION="3.3.23"
+
+# Create Chrome policies to force-install extensions
+cat > /etc/opt/chrome/policies/managed/extensions.json << EOL
+{
+  "ExtensionInstallForcelist": [
+    "${UBLOCK_ID}",
+    "${DARKREADER_ID}",
+    "${ZEROOMEGA_ID}"
+  ]
+}
+EOL
 
 # Create Chrome preferences file with extensions
 cat > /home/coder/.config/google-chrome/Default/Preferences << EOL
@@ -177,7 +189,12 @@ chown -R coder:coder /home/coder/.config
 # Cleanup
 rm -f /tmp/ublock.zip /tmp/darkreader.zip /tmp/zeroomega.zip /tmp/zeroomega.crx
 
-# Now ask chrome to load ZeroOmega extension by default. We re-create google-chrome-stable created in Dockerfile
+# Now restore the original chrome launcher without the load-extension flag
 echo "#!/bin/bash" > /usr/bin/google-chrome-stable
-echo "exec /opt/google/chrome/chrome --no-sandbox --test-type --load-extension=~/.config/google-chrome/Default/Extensions/${ZEROOMEGA_ID}/${ZEROOMEGA_VERSION}/ \"\$@\"" >> /usr/bin/google-chrome-stable
+echo "exec /opt/google/chrome/chrome --no-sandbox --test-type \"\$@\"" >> /usr/bin/google-chrome-stable
 chmod +x /usr/bin/google-chrome-stable
+
+# Set permissions for Chrome policies
+chown -R root:root /etc/opt/chrome/policies
+chmod 755 /etc/opt/chrome/policies/managed
+chmod 644 /etc/opt/chrome/policies/managed/extensions.json
