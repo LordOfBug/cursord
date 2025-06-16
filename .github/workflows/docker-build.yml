@@ -8,11 +8,11 @@ on:
       build_ubuntu:
         description: 'Build Ubuntu image'
         type: boolean
-        default: false
+        default: true
       build_default:
         description: 'Build default image'
         type: boolean
-        default: true
+        default: false
   push:
     branches: [ "main" ]  # Run on pushes to main branch
     paths:

@@ -1,11 +1,70 @@
 # Use configurable base image
 ARG BASE_IMAGE=buglord/cursord
-ARG BASE_TAG=latest
+# ARG BASE_TAG=latest
+ARG BASE_TAG=v0.49.5
 FROM ${BASE_IMAGE}:${BASE_TAG}
 
 # Define ARGs for Windsurf version and URL
 ARG WINDSURF_URL
 ARG WINDSURF_VERSION
+ARG CURSOR_DOWNLOAD_URL=https://downloader.cursor.sh/linux
+
+# Download cursor from cursor.sh
+RUN wget -O /tmp/cursor.app "${CURSOR_DOWNLOAD_URL}" && \
+    chmod +x /tmp/cursor.app && \
+    /tmp/cursor.app --appimage-extract && \
+    mv squashfs-root /usr/local/cursor && \
+    chown -R coder:coder /usr/local/cursor && \
+    rm /tmp/cursor.app
+
+# Copy cursor startup script
+COPY cursor-ubuntu.sh /bin/cursor.sh
+RUN chmod +x /bin/cursor.sh && \
+    chown coder:coder /bin/cursor.sh
+
+# Create desktop shortcut for Cursor
+RUN mkdir -p /home/coder/Desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/cursor.desktop && \
+    echo "Name=Cursor" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Exec=/bin/cursor.sh" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/cursor.desktop && \
+    echo "Categories=Development;" >> /home/coder/Desktop/cursor.desktop && \
+    chmod +x /home/coder/Desktop/cursor.desktop && \
+    chown -R coder:coder /home/coder/Desktop
+
+# Copy and setup upgrade script
+COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
+RUN chmod +x /bin/upgrade-cursor.sh && \
+    chown coder:coder /bin/upgrade-cursor.sh
+
+# Install Visual Studio Code
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list && \
+    apt update && \
+    apt install -y code && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create VSCode startup script
+RUN echo '#!/bin/bash' > /bin/code.sh && \
+    echo 'exec /usr/bin/code --no-sandbox --unity-launch "$@"' >> /bin/code.sh && \
+    chmod +x /bin/code.sh && \
+    chown coder:coder /bin/code.sh
+
+# Create desktop shortcut for VSCode
+RUN echo "[Desktop Entry]" > /home/coder/Desktop/vscode.desktop && \
+    echo "Name=Visual Studio Code" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Comment=Code Editing. Redefined." >> /home/coder/Desktop/vscode.desktop && \
+    echo "Exec=/bin/code.sh" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Icon=/usr/share/code/resources/app/resources/linux/code.png" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Categories=Development;TextEditor;" >> /home/coder/Desktop/vscode.desktop && \
+    echo "StartupNotify=true" >> /home/coder/Desktop/vscode.desktop && \
+    chmod +x /home/coder/Desktop/vscode.desktop && \
+    chown -R coder:coder /home/coder/Desktop
 
 # Install windsurf using provided URL
 RUN echo "Installing Windsurf version: ${WINDSURF_VERSION} from ${WINDSURF_URL}" && \
