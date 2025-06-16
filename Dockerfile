@@ -12,6 +12,7 @@ RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument 
 
 # Install essential dependencies
 RUN apt update && apt install -y \
+    jq \
     vim \
     wget \
     curl \
