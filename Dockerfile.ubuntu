@@ -1,8 +1,8 @@
 # Use configurable base image
 ARG BASE_IMAGE=buglord/cursord
-# ARG BASE_TAG=latest
-ARG BASE_TAG=v0.49.5
-FROM ${BASE_IMAGE}:${BASE_TAG}
+ARG BASE_TAG=latest
+# FROM ${BASE_IMAGE}:${BASE_TAG}
+FROM ${BASE_IMAGE}:v0.49.5
 
 # Define ARGs for Windsurf version and URL
 ARG WINDSURF_URL
