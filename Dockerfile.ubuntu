@@ -9,45 +9,6 @@ ARG WINDSURF_URL
 ARG WINDSURF_VERSION
 ARG CURSOR_DOWNLOAD_URL=https://downloader.cursor.sh/linux
 
-# Install essential dependencies
-RUN apt update && apt install -y \
-    jq \
-    libarchive-tools \
-    vim \
-    wget \
-    curl \
-    unzip \
-    sudo \
-    xorg \
-    xrdp \
-    xfce4 \
-    xfce4-terminal \
-    xdg-utils \
-    gnome-keyring \
-    dbus-x11 \
-    libsecret-1-0 \
-    libsecret-common \
-    xauth \
-    supervisor \
-    software-properties-common \
-    # Chrome/Electron app dependencies
-    libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    # XDG integration dependencies
-    desktop-file-utils \
-    mime-support \
-    && apt clean
-
 # Download cursor from cursor.sh
 RUN wget -O /tmp/cursor.app "${CURSOR_DOWNLOAD_URL}" && \
     chmod +x /tmp/cursor.app && \
