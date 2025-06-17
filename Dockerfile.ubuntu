@@ -2,12 +2,42 @@
 ARG BASE_IMAGE=buglord/cursord
 ARG BASE_TAG=latest
 # FROM ${BASE_IMAGE}:${BASE_TAG}
-FROM ${BASE_IMAGE}:v0.49.5
+FROM buglord/cursord:ubuntu-v0.49.5
 
 # Define ARGs for Windsurf version and URL
 ARG WINDSURF_URL
 ARG WINDSURF_VERSION
 ARG CURSOR_DOWNLOAD_URL=https://downloader.cursor.sh/linux
+
+# Install Visual Studio Code
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list && \
+    apt update && \
+    apt install -y code && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create VSCode startup script
+RUN echo '#!/bin/bash' > /bin/code.sh && \
+    echo 'exec /usr/bin/code --no-sandbox --unity-launch "$@"' >> /bin/code.sh && \
+    chmod +x /bin/code.sh && \
+    chown coder:coder /bin/code.sh
+
+# Create desktop shortcut for VSCode
+RUN echo "[Desktop Entry]" > /home/coder/Desktop/vscode.desktop && \
+    echo "Name=Visual Studio Code" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Comment=Code Editing. Redefined." >> /home/coder/Desktop/vscode.desktop && \
+    echo "Exec=/bin/code.sh" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Icon=/usr/share/code/resources/app/resources/linux/code.png" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/vscode.desktop && \
+    echo "Categories=Development;TextEditor;" >> /home/coder/Desktop/vscode.desktop && \
+    echo "StartupNotify=true" >> /home/coder/Desktop/vscode.desktop && \
+    chmod +x /home/coder/Desktop/vscode.desktop && \
+    chown -R coder:coder /home/coder/Desktop
+
+# Re-install cursor
+RUN rm -rf /usr/local/cursor
 
 # Download cursor from cursor.sh
 RUN wget -O /tmp/cursor.app "${CURSOR_DOWNLOAD_URL}" && \
@@ -39,32 +69,8 @@ COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
 RUN chmod +x /bin/upgrade-cursor.sh && \
     chown coder:coder /bin/upgrade-cursor.sh
 
-# Install Visual Studio Code
-RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list && \
-    apt update && \
-    apt install -y code && \
-    apt clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create VSCode startup script
-RUN echo '#!/bin/bash' > /bin/code.sh && \
-    echo 'exec /usr/bin/code --no-sandbox --unity-launch "$@"' >> /bin/code.sh && \
-    chmod +x /bin/code.sh && \
-    chown coder:coder /bin/code.sh
-
-# Create desktop shortcut for VSCode
-RUN echo "[Desktop Entry]" > /home/coder/Desktop/vscode.desktop && \
-    echo "Name=Visual Studio Code" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Comment=Code Editing. Redefined." >> /home/coder/Desktop/vscode.desktop && \
-    echo "Exec=/bin/code.sh" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Icon=/usr/share/code/resources/app/resources/linux/code.png" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Terminal=false" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Type=Application" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Categories=Development;TextEditor;" >> /home/coder/Desktop/vscode.desktop && \
-    echo "StartupNotify=true" >> /home/coder/Desktop/vscode.desktop && \
-    chmod +x /home/coder/Desktop/vscode.desktop && \
-    chown -R coder:coder /home/coder/Desktop
+# Re-install windsurf
+RUN rm -rf /usr/local/windsurf
 
 # Install windsurf using provided URL
 RUN echo "Installing Windsurf version: ${WINDSURF_VERSION} from ${WINDSURF_URL}" && \
@@ -109,14 +115,6 @@ RUN mkdir -p /usr/share/applications && \
 # Register the protocol handler
 RUN xdg-mime default windsurf-protocol-handler.desktop x-scheme-handler/windsurf && \
     update-desktop-database /usr/share/applications
-
-# Copy Chrome extension setup script
-COPY setup-chrome-extensions.sh /tmp/setup-chrome-extensions.sh
-
-# Install Chrome extensions for the default user
-RUN chmod +x /tmp/setup-chrome-extensions.sh && \
-    /tmp/setup-chrome-extensions.sh && \
-    rm /tmp/setup-chrome-extensions.sh
 
 # Expose XRDP port
 EXPOSE 3389
