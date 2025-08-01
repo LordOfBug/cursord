@@ -3,12 +3,7 @@ name: Docker Build and Push
 on:
   schedule:
     - cron: '0 0 * * *'  # Run at 00:00 UTC every day
-  workflow_dispatch:  # Allow manual triggers
-    inputs:
-      build_ubuntu:
-        description: 'Build Ubuntu image'
-        type: boolean
-        default: true
+
   push:
     branches: [ "main" ]  # Run on pushes to main branch
     paths:
@@ -126,7 +121,6 @@ jobs:
 
       # Ubuntu image build
       - name: Check if Ubuntu Docker images exist
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_ubuntu }}
         id: check_ubuntu_image
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -170,18 +164,16 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.ubuntu
+          file: Dockerfile
           push: true
           build-args: |
             CURSOR_DOWNLOAD_URL=${{ env.CURSOR_DOWNLOAD_URL }}
-            BASE_IMAGE=${{ env.IMAGE_NAME }}
-            BASE_TAG=v${{ env.CURSOR_VERSION }}
             WINDSURF_URL=${{ env.WINDSURF_URL }}
             WINDSURF_VERSION=${{ env.WINDSURF_VERSION }}
           tags: |
-            ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.CURSOR_VERSION }}
-            ${{ env.IMAGE_NAME }}:ubuntu-v${{ env.WINDSURF_VERSION }}
-            ${{ env.IMAGE_NAME }}:ubuntu-latest
+            ${{ env.IMAGE_NAME }}:cursor-v${{ env.CURSOR_VERSION }}
+            ${{ env.IMAGE_NAME }}:windsurf-v${{ env.WINDSURF_VERSION }}
+            ${{ env.IMAGE_NAME }}:latest
 
       - name: Log out from Docker Hub
         if: always()

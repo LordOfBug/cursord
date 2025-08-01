@@ -7,6 +7,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Add build argument for Cursor download URL
 ARG CURSOR_DOWNLOAD_URL=https://downloader.cursor.sh/linux
 
+# Define ARGs for Windsurf version and URL
+ARG WINDSURF_URL
+
+ARG WINDSURF_VERSION
+
 # Verify build argument is provided
 RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument is required" && false)
 
@@ -120,6 +125,55 @@ RUN mkdir -p /home/coder/Desktop && \
 COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
 RUN chmod +x /bin/upgrade-cursor.sh && \
     chown coder:coder /bin/upgrade-cursor.sh
+
+# Install windsurf using provided URL
+RUN echo "Installing Windsurf version: ${WINDSURF_VERSION} from ${WINDSURF_URL}" && \
+    wget -O /tmp/windsurf.tar.gz "${WINDSURF_URL}" && \
+    tar -xzvf /tmp/windsurf.tar.gz && \
+    mv Windsurf /usr/local/windsurf && \
+    chown -R coder:coder /usr/local/windsurf && \
+    rm /tmp/windsurf.tar.gz
+
+# Copy windsurf startup script
+COPY windsurf-ubuntu.sh /bin/windsurf.sh
+RUN chmod +x /bin/windsurf.sh && \
+    chown coder:coder /bin/windsurf.sh
+
+# Create windsurf desktop entry
+RUN mkdir -p /home/coder/Desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/windsurf.desktop && \
+    echo "Name=Windsurf" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Exec=/bin/windsurf.sh" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Icon=/usr/local/windsurf/resources/app/resources/linux/code.png" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/windsurf.desktop && \
+    echo "Categories=Development;" >> /home/coder/Desktop/windsurf.desktop && \
+    chmod +x /home/coder/Desktop/windsurf.desktop && \
+    chown -R coder:coder /home/coder/Desktop
+
+# Create windsurf protocol handler script
+RUN echo '#!/bin/bash' > /bin/windsurf-protocol-handler.sh && \
+    echo 'url="$1"' >> /bin/windsurf-protocol-handler.sh && \
+    echo '/bin/windsurf.sh "$url"' >> /bin/windsurf-protocol-handler.sh && \
+    chmod +x /bin/windsurf-protocol-handler.sh
+
+# Configure windsurf:// protocol handler
+RUN mkdir -p /usr/share/applications && \
+    echo "[Desktop Entry]" > /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Name=Windsurf Protocol Handler" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Exec=/bin/windsurf.sh %u" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Type=Application" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Terminal=false" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "MimeType=x-scheme-handler/windsurf;" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
+    echo "Categories=Development;" >> /usr/share/applications/windsurf-protocol-handler.desktop
+
+# Copy and setup upgrade script
+COPY upgrade-windsurf.sh /bin/upgrade-windsurf.sh
+RUN chmod +x /bin/upgrade-windsurf.sh && \
+    chown coder:coder /bin/upgrade-windsurf.sh
+
+# Register the protocol handler
+RUN xdg-mime default windsurf-protocol-handler.desktop x-scheme-handler/windsurf && \
+    update-desktop-database /usr/share/applications
 
 # Install Visual Studio Code
 RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
