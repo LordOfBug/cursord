@@ -4,18 +4,28 @@ echo "directly from the official GitHub releases page into Microsoft Edge."
 echo "------------------------------------------------------------------"
 
 # Step 1: Check for required tools
-if ! command -v curl &> /dev/null
-then
+# Try different curl locations
+CURL_CMD=""
+if command -v curl &> /dev/null; then
+    CURL_CMD="curl"
+elif [ -x "/usr/bin/curl" ]; then
+    CURL_CMD="/usr/bin/curl"
+elif [ -x "/bin/curl" ]; then
+    CURL_CMD="/bin/curl"
+else
     echo "Error: 'curl' is required to run this script."
     echo "Please install it first by running: sudo apt update && sudo apt install curl"
+    echo "Searched in: $(which curl 2>/dev/null || echo 'not found'), /usr/bin/curl, /bin/curl"
     exit 1
 fi
+
+echo "Using curl from: $CURL_CMD"
 
 # Step 2: Dynamically find the latest version tag
 echo "Finding the latest release version..."
 # Use curl to follow redirects (-L) and get the final URL (-w '%{url_effective}').
 # The last part of the URL will be the version tag.
-LATEST_TAG=$(curl -s -L -o /dev/null -w '%{url_effective}' https://github.com/zero-peak/ZeroOmega/releases/latest | xargs basename)
+LATEST_TAG=$($CURL_CMD -s -L -o /dev/null -w '%{url_effective}' https://github.com/zero-peak/ZeroOmega/releases/latest | xargs basename)
 
 if [ -z "$LATEST_TAG" ]; then
     echo "Error: Could not determine the latest release tag. Please check the GitHub page."
@@ -29,7 +39,7 @@ CRX_URL="https://github.com/zero-peak/ZeroOmega/releases/download/${LATEST_TAG}/
 DEST_FILE="$HOME/zeroomega-${LATEST_TAG}.crx"
 
 echo "Downloading CRX file from: $CRX_URL"
-curl -L --progress-bar -o "$DEST_FILE" "$CRX_URL"
+$CURL_CMD -L --progress-bar -o "$DEST_FILE" "$CRX_URL"
 if [ $? -ne 0 ]; then
     echo "Error: Failed to download the CRX file."
     exit 1

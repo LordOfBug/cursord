@@ -265,6 +265,8 @@ COPY install-zero-omega.sh /usr/bin/install-zero-omega.sh
 RUN chmod +x /usr/bin/install-zero-omega.sh
 # Run as coder user to install extension in user profile
 USER coder
+# Ensure PATH includes standard directories and install required tools are available
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 RUN /usr/bin/install-zero-omega.sh
 USER root
 
