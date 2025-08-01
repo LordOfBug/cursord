@@ -156,11 +156,9 @@ jobs:
           fi
 
       - name: Set up Docker Buildx for Ubuntu image
-        if: env.UBUNTU_EXISTS == 'false' && (github.event_name != 'workflow_dispatch' || inputs.build_ubuntu)
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Ubuntu Docker image
-        if: env.UBUNTU_EXISTS == 'false' && (github.event_name != 'workflow_dispatch' || inputs.build_ubuntu)
         uses: docker/build-push-action@v5
         with:
           context: .
