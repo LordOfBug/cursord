@@ -205,6 +205,10 @@ RUN echo "[Desktop Entry]" > /home/coder/Desktop/vscode.desktop && \
 # Delete the existing machine-id file. Init system will generate new ones
 RUN rm -f /etc/machine-id
 
+COPY install-zero-omega.sh /usr/bin/install-zero-omega.sh
+RUN chmod +x /usr/bin/install-zero-omega.sh
+RUN /usr/bin/install-zero-omega.sh
+
 # Setup supervisord entry for ensure machine id
 COPY ensure_machine_id.sh /usr/bin/ensure_machine_id.sh
 RUN chmod +x /usr/bin/ensure_machine_id.sh
