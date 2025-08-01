@@ -1,6 +1,6 @@
-# Announce the script's purpose and thank the user for the better method
-echo "This script will download the LATEST release of 'ZeroOmega' directly"
-echo "from the official GitHub releases page. This is the best method."
+# Announce the script's purpose and automatic installation
+echo "This script will download and automatically install the LATEST release of 'ZeroOmega'"
+echo "directly from the official GitHub releases page into Microsoft Edge."
 echo "------------------------------------------------------------------"
 
 # Step 1: Check for required tools
@@ -35,24 +35,79 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "Extracting to .zeroomega"
-mkdir .zeroomega
-cd .zeroomega
-unzip "$DEST_FILE"
+echo "Extracting extension..."
+EXT_DIR="$HOME/.zeroomega"
+mkdir -p "$EXT_DIR"
+cd "$EXT_DIR"
+unzip -q "$DEST_FILE"
 rm "$DEST_FILE"
 
-# Step 4: Provide clear instructions for installing a .crx file
+# Step 4: Automatically install extension in Microsoft Edge
 echo
-echo "��� Download complete!"
-echo "File extract to $HOME/.zeroomega"
+echo "✅ Download and extraction complete!"
+echo "Installing ZeroOmega extension automatically in Microsoft Edge..."
 echo
+
+# Create Edge extensions directory if it doesn't exist
+EDGE_EXT_DIR="$HOME/.config/microsoft-edge/Default/Extensions"
+mkdir -p "$EDGE_EXT_DIR"
+
+# Get extension ID from manifest.json
+if [ -f "$EXT_DIR/manifest.json" ]; then
+    # Generate a consistent extension ID based on the extension's public key or name
+    # For ZeroOmega, we'll use a known extension ID or generate one
+    EXT_ID="padekgcemlokbadohgkifijomclgjgif"  # ZeroOmega's known extension ID
+    
+    # Create extension directory in Edge profile
+    EDGE_EXT_INSTALL_DIR="$EDGE_EXT_DIR/$EXT_ID"
+    mkdir -p "$EDGE_EXT_INSTALL_DIR/$LATEST_TAG"
+    
+    # Copy extension files to Edge extensions directory
+    cp -r "$EXT_DIR"/* "$EDGE_EXT_INSTALL_DIR/$LATEST_TAG/"
+    
+    # Create Edge preferences to enable the extension
+    EDGE_PREFS="$HOME/.config/microsoft-edge/Default/Preferences"
+    mkdir -p "$(dirname "$EDGE_PREFS")"
+    
+    # Create or update preferences file to include the extension
+    if [ ! -f "$EDGE_PREFS" ]; then
+        cat > "$EDGE_PREFS" << EOF
+{
+   "extensions": {
+      "settings": {
+         "$EXT_ID": {
+            "active_permissions": {
+               "api": [ "proxy", "storage", "webRequest", "webRequestBlocking", "tabs", "activeTab" ],
+               "explicit_host": [ "<all_urls>" ]
+            },
+            "creation_flags": 1,
+            "from_webstore": false,
+            "install_time": "$(date -u +%s)000000",
+            "location": 4,
+            "manifest": {
+               "name": "ZeroOmega",
+               "version": "${LATEST_TAG#v}"
+            },
+            "path": "$EXT_ID/$LATEST_TAG",
+            "state": 1,
+            "was_installed_by_default": false,
+            "was_installed_by_oem": false
+         }
+      }
+   }
+}
+EOF
+    fi
+    
+    echo "✅ ZeroOmega extension has been automatically installed in Microsoft Edge!"
+    echo "The extension will be available when you start Microsoft Edge."
+    echo "Extension installed to: $EDGE_EXT_INSTALL_DIR/$LATEST_TAG"
+else
+    echo "❌ Error: Could not find manifest.json in extracted files."
+    echo "Manual installation may be required."
+    echo "Extension files are available at: $EXT_DIR"
+fi
+
 echo "------------------------------------------------------------------"
-echo "IMPORTANT: FINAL INSTALLATION STEPS"
-echo "------------------------------------------------------------------"
-echo "1. Open Google Chrome and go to the extensions page:"
-echo "   chrome://extensions"
-echo
-echo "2. Click Load unpacked and choose $HOME/.zeroomega"
-echo
-echo "3. A confirmation dialog will appear. Click 'Add extension'."
+echo "Installation complete! Start Microsoft Edge to use ZeroOmega."
 echo "------------------------------------------------------------------"

@@ -36,7 +36,7 @@ RUN apt update && apt install -y \
     xauth \
     supervisor \
     software-properties-common \
-    # Chrome/Electron app dependencies
+    # Browser/Electron app dependencies
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
@@ -49,26 +49,82 @@ RUN apt update && apt install -y \
     libxrandr2 \
     libgbm1 \
     libasound2 \
+    # Additional dependencies for Edge and IDE stability
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    libglib2.0-0 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxtst6 \
+    libxi6 \
+    libxss1 \
+    libgconf-2-4 \
+    libxcursor1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxinerama1 \
+    libxrandr2 \
+    libasound2-dev \
+    libatspi2.0-0 \
+    libdrm2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxss1 \
+    # Font and rendering support
+    fonts-liberation \
+    fonts-dejavu-core \
+    fontconfig \
+    # Development tools and libraries
+    build-essential \
+    git \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    # Process and system utilities
+    htop \
+    procps \
+    psmisc \
     # XDG integration dependencies
     desktop-file-utils \
     mime-support \
     && apt clean
 
-# Install Chrome and set as default browser
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+# Install Microsoft Edge and set as default browser
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-edge.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-edge.gpg] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list && \
     apt update && \
-    apt install -y google-chrome-stable && \
+    apt install -y microsoft-edge-stable && \
     apt clean && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /etc/opt/chrome/policies/managed && \
-    chmod 755 /etc/opt/chrome/policies/managed && \
-    echo '#!/bin/bash' > /usr/bin/google-chrome-stable && \
-    echo 'exec /opt/google/chrome/chrome --no-sandbox --test-type "$@"' >> /usr/bin/google-chrome-stable && \
-    chmod +x /usr/bin/google-chrome-stable && \
-    update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/bin/google-chrome-stable 500 && \
-    update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/bin/google-chrome-stable 500 && \
-    xdg-settings set default-web-browser google-chrome.desktop
+    # Create Edge startup script with necessary flags for containerized environment
+    echo '#!/bin/bash' > /usr/bin/microsoft-edge-stable && \
+    echo 'exec /opt/microsoft/msedge/msedge --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-software-rasterizer --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-features=TranslateUI --disable-ipc-flooding-protection --no-first-run --no-default-browser-check "$@"' >> /usr/bin/microsoft-edge-stable && \
+    chmod +x /usr/bin/microsoft-edge-stable && \
+    # Set as default browser
+    update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/bin/microsoft-edge-stable 500 && \
+    update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/bin/microsoft-edge-stable 500 && \
+    # Create desktop entry for Edge
+    mkdir -p /usr/share/applications && \
+    echo '[Desktop Entry]' > /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Version=1.0' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Name=Microsoft Edge' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Comment=Access the Internet' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'GenericName=Web Browser' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Keywords=Internet;WWW;Browser;Web;Explorer' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Exec=/usr/bin/microsoft-edge-stable %U' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Terminal=false' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'X-MultipleArgs=false' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Type=Application' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Icon=microsoft-edge' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Categories=Network;WebBrowser;' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;x-scheme-handler/chrome;video/webm;application/x-xpinstall;' >> /usr/share/applications/microsoft-edge.desktop && \
+    echo 'Actions=new-window;new-private-window;' >> /usr/share/applications/microsoft-edge.desktop && \
+    xdg-settings set default-web-browser microsoft-edge.desktop
 
 # Configure XRDP
 RUN adduser xrdp ssl-cert && \
@@ -207,7 +263,10 @@ RUN rm -f /etc/machine-id
 
 COPY install-zero-omega.sh /usr/bin/install-zero-omega.sh
 RUN chmod +x /usr/bin/install-zero-omega.sh
-# RUN /usr/bin/install-zero-omega.sh
+# Run as coder user to install extension in user profile
+USER coder
+RUN /usr/bin/install-zero-omega.sh
+USER root
 
 # Setup supervisord entry for ensure machine id
 COPY ensure_machine_id.sh /usr/bin/ensure_machine_id.sh
