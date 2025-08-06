@@ -16,83 +16,90 @@ ARG WINDSURF_VERSION
 RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument is required" && false)
 
 # Install essential dependencies
-RUN apt update && apt install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Essential build tools and utilities
+    build-essential \
+    ca-certificates \
+    curl \
+    git \
+    gnupg \
     jq \
     libarchive-tools \
+    lsb-release \
+    procps \
+    psmisc \
+    software-properties-common \
+    sudo \
+    unzip \
     vim \
     wget \
-    curl \
-    unzip \
-    sudo \
+
+    # X11 and GUI Libraries
     xorg \
     xrdp \
     xfce4 \
     xfce4-terminal \
-    xdg-utils \
-    gnome-keyring \
     dbus-x11 \
-    libsecret-1-0 \
-    libsecret-common \
     xauth \
-    supervisor \
-    software-properties-common \
-    # Browser/Electron app dependencies
-    libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    # Additional dependencies for Edge and IDE stability
+    xdg-utils \
+
+    # Core GTK and rendering libraries
     libgtk-3-0 \
     libgdk-pixbuf2.0-0 \
-    libglib2.0-0 \
-    libpango-1.0-0 \
     libcairo2 \
+    libpango-1.0-0 \
+    libglib2.0-0 \
+
+    # X11 extension libraries
     libx11-6 \
-    libxext6 \
-    libxrender1 \
-    libxtst6 \
-    libxi6 \
-    libxss1 \
-    libgconf-2-4 \
+    libx11-xcb1 \
+    libxcomposite1 \
     libxcursor1 \
     libxdamage1 \
+    libxext6 \
     libxfixes3 \
+    libxi6 \
     libxinerama1 \
     libxrandr2 \
-    libasound2-dev \
-    libatspi2.0-0 \
-    libdrm2 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libgbm1 \
+    libxrender1 \
     libxss1 \
-    # Font and rendering support
+    libxtst6 \
+    libxkbcommon0 \
+
+    # Graphics and hardware libraries
+    libdrm2 \
+    libgbm1 \
+    libgl1-mesa-glx \
+    libgbm-dev \
+
+    # Audio and multimedia
+    libasound2 \
+    libcups2 \
+
+    # App-specific libraries (Electron, etc.)
+    gnome-keyring \
+    libappindicator3-1 \
+    libatspi2.0-0 \
+    libgconf-2-4 \
+    libnss3 \
+    libnotify4 \
+    libsecret-1-0 \
+    libsecret-common \
+    libuuid1 \
+
+    # Fonts and rendering support
     fonts-liberation \
     fonts-dejavu-core \
     fontconfig \
-    # Development tools and libraries
-    build-essential \
-    git \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    # Process and system utilities
-    htop \
-    procps \
-    psmisc \
+
     # XDG integration dependencies
     desktop-file-utils \
     mime-support \
-    && apt clean
+
+    # Process and system utilities
+    htop \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Microsoft Edge and set as default browser
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-edge.gpg && \
