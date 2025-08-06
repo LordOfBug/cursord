@@ -16,7 +16,7 @@ ARG WINDSURF_VERSION
 RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument is required" && false)
 
 # Install essential dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
     # Essential build tools and utilities
     build-essential \
     ca-certificates \
@@ -39,6 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xorg \
     xrdp \
     xfce4 \
+    xfce4-goodies \
     xfce4-terminal \
     dbus-x11 \
     xauth \
