@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     psmisc \
     software-properties-common \
+    supervisor \
     sudo \
     unzip \
     vim \
