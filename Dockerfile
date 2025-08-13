@@ -100,26 +100,6 @@ RUN apt-get update && apt-get install -y \
 
     # Process and system utilities
     htop \
-    
-    # Additional packages for IDE stability
-    dbus \
-    dbus-user-session \
-    systemd \
-    at-spi2-core \
-    gvfs \
-    gvfs-backends \
-    gvfs-fuse \
-    libglib2.0-bin \
-    libgtk-3-bin \
-    shared-mime-info \
-    
-    # Memory and process management
-    procps \
-    psmisc \
-    
-    # File system utilities
-    inotify-tools \
-    
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -299,40 +279,14 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 RUN /usr/bin/install-zero-omega.sh
 USER root
 
-# Setup supervisord configuration
+# Setup supervisord entry for ensure machine id
 COPY ensure_machine_id.sh /usr/bin/ensure_machine_id.sh
 RUN chmod +x /usr/bin/ensure_machine_id.sh
 
-# Create proper supervisord configuration
-RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
-    echo "nodaemon=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "user=root" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[program:ensure_machine_id]" >> /etc/supervisor/conf.d/supervisord.conf && \
+RUN echo "[program:ensure_machine_id]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/bin/ensure_machine_id.sh" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autorestart=false" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "startsecs=0" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "priority=100" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[program:dbus]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "command=/usr/bin/dbus-daemon --system --nofork" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "startsecs=1" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "priority=200" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[program:xrdp]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "command=/usr/sbin/xrdp -nodaemon" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "priority=300" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[program:xrdp-sesman]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "command=/usr/sbin/xrdp-sesman -nodaemon" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "priority=300" >> /etc/supervisor/conf.d/supervisord.conf
+    echo "autorestart=false" >> /etc/supervisor/conf.d/supervisord.conf
 
 # Expose XRDP port
 EXPOSE 3389
