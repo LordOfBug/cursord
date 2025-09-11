@@ -124,7 +124,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to Additional Docker Registry
-        if: ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_REGISTRY_USERNAME != '' && secrets.ADDITIONAL_REGISTRY_PASSWORD != '' }}
+        if: ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_REGISTRY_USERNAME != '' }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.ADDITIONAL_REGISTRY_URL }}
