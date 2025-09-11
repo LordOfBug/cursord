@@ -15,11 +15,10 @@ env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/cursord
-  # Additional Docker registry (optional)
-  ADDITIONAL_REGISTRY_URL: ${{ secrets.ADDITIONAL_REGISTRY_URL }}
-  ADDITIONAL_REGISTRY_USERNAME: ${{ secrets.ADDITIONAL_REGISTRY_USERNAME }}
-  ADDITIONAL_REGISTRY_PASSWORD: ${{ secrets.ADDITIONAL_REGISTRY_PASSWORD }}
-  ADDITIONAL_IMAGE_NAME: ${{ secrets.ADDITIONAL_IMAGE_NAME }}
+  # Additional Docker registry (optional) - only password is stored as secret
+  ADDITIONAL_REGISTRY_URL: ${{ vars.ADDITIONAL_REGISTRY_URL }}
+  ADDITIONAL_REGISTRY_USERNAME: ${{ vars.ADDITIONAL_REGISTRY_USERNAME }}
+  ADDITIONAL_IMAGE_NAME: ${{ vars.ADDITIONAL_IMAGE_NAME }}
 
 jobs:
   check-and-build:
@@ -125,11 +124,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to Additional Docker Registry
-        if: ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_REGISTRY_USERNAME != '' && secrets.ADDITIONAL_REGISTRY_PASSWORD != '' }}
+        if: ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_REGISTRY_USERNAME != '' && secrets.ADDITIONAL_REGISTRY_PASSWORD != '' }}
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.ADDITIONAL_REGISTRY_URL }}
-          username: ${{ secrets.ADDITIONAL_REGISTRY_USERNAME }}
+          registry: ${{ env.ADDITIONAL_REGISTRY_URL }}
+          username: ${{ env.ADDITIONAL_REGISTRY_USERNAME }}
           password: ${{ secrets.ADDITIONAL_REGISTRY_PASSWORD }}
 
       # Ubuntu image build
@@ -185,14 +184,14 @@ jobs:
             ${{ env.IMAGE_NAME }}:cursor-v${{ env.CURSOR_VERSION }}
             ${{ env.IMAGE_NAME }}:windsurf-v${{ env.WINDSURF_VERSION }}
             ${{ env.IMAGE_NAME }}:latest
-            ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:cursor-v{2}', secrets.ADDITIONAL_REGISTRY_URL, secrets.ADDITIONAL_IMAGE_NAME, env.CURSOR_VERSION) || '' }}
-            ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:windsurf-v{2}', secrets.ADDITIONAL_REGISTRY_URL, secrets.ADDITIONAL_IMAGE_NAME, env.WINDSURF_VERSION) || '' }}
-            ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:latest', secrets.ADDITIONAL_REGISTRY_URL, secrets.ADDITIONAL_IMAGE_NAME) || '' }}
+            ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:cursor-v{2}', env.ADDITIONAL_REGISTRY_URL, env.ADDITIONAL_IMAGE_NAME, env.CURSOR_VERSION) || '' }}
+            ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:windsurf-v{2}', env.ADDITIONAL_REGISTRY_URL, env.ADDITIONAL_IMAGE_NAME, env.WINDSURF_VERSION) || '' }}
+            ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:latest', env.ADDITIONAL_REGISTRY_URL, env.ADDITIONAL_IMAGE_NAME) || '' }}
 
       - name: Log out from Docker Hub
         if: always()
         run: docker logout
 
       - name: Log out from Additional Docker Registry
-        if: always() && secrets.ADDITIONAL_REGISTRY_URL != ''
-        run: docker logout ${{ secrets.ADDITIONAL_REGISTRY_URL }} 
+        if: always() && env.ADDITIONAL_REGISTRY_URL != ''
+        run: docker logout ${{ env.ADDITIONAL_REGISTRY_URL }} 
