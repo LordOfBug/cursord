@@ -15,6 +15,11 @@ env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/cursord
+  # Additional Docker registry (optional)
+  ADDITIONAL_REGISTRY_URL: ${{ secrets.ADDITIONAL_REGISTRY_URL }}
+  ADDITIONAL_REGISTRY_USERNAME: ${{ secrets.ADDITIONAL_REGISTRY_USERNAME }}
+  ADDITIONAL_REGISTRY_PASSWORD: ${{ secrets.ADDITIONAL_REGISTRY_PASSWORD }}
+  ADDITIONAL_IMAGE_NAME: ${{ secrets.ADDITIONAL_IMAGE_NAME }}
 
 jobs:
   check-and-build:
@@ -119,6 +124,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Login to Additional Docker Registry
+        if: ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_REGISTRY_USERNAME != '' && secrets.ADDITIONAL_REGISTRY_PASSWORD != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ADDITIONAL_REGISTRY_URL }}
+          username: ${{ secrets.ADDITIONAL_REGISTRY_USERNAME }}
+          password: ${{ secrets.ADDITIONAL_REGISTRY_PASSWORD }}
+
       # Ubuntu image build
       - name: Check if Ubuntu Docker images exist
         id: check_ubuntu_image
@@ -172,7 +185,14 @@ jobs:
             ${{ env.IMAGE_NAME }}:cursor-v${{ env.CURSOR_VERSION }}
             ${{ env.IMAGE_NAME }}:windsurf-v${{ env.WINDSURF_VERSION }}
             ${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:cursor-v{2}', secrets.ADDITIONAL_REGISTRY_URL, secrets.ADDITIONAL_IMAGE_NAME, env.CURSOR_VERSION) || '' }}
+            ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:windsurf-v{2}', secrets.ADDITIONAL_REGISTRY_URL, secrets.ADDITIONAL_IMAGE_NAME, env.WINDSURF_VERSION) || '' }}
+            ${{ secrets.ADDITIONAL_REGISTRY_URL != '' && secrets.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:latest', secrets.ADDITIONAL_REGISTRY_URL, secrets.ADDITIONAL_IMAGE_NAME) || '' }}
 
       - name: Log out from Docker Hub
         if: always()
-        run: docker logout 
+        run: docker logout
+
+      - name: Log out from Additional Docker Registry
+        if: always() && secrets.ADDITIONAL_REGISTRY_URL != ''
+        run: docker logout ${{ secrets.ADDITIONAL_REGISTRY_URL }} 
