@@ -2,6 +2,11 @@
 
 export APPDIR=/usr/local/windsurf
 
+# Set environment variables for Chinese text rendering
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export FONTCONFIG_PATH=/etc/fonts
+
 # Common stability flags for containerized environment
 STABILITY_FLAGS="--no-sandbox \
     --disable-dev-shm-usage \

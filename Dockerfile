@@ -92,6 +92,10 @@ RUN apt-get update && apt-get install -y \
     # Fonts and rendering support
     fonts-liberation \
     fonts-dejavu-core \
+    fonts-noto-cjk \
+    fonts-noto-cjk-extra \
+    fonts-wqy-zenhei \
+    fonts-wqy-microhei \
     fontconfig \
 
     # XDG integration dependencies
@@ -100,8 +104,26 @@ RUN apt-get update && apt-get install -y \
 
     # Process and system utilities
     htop \
+    
+    # Locale support for Chinese
+    locales \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure Chinese locale support
+RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
+    sed -i '/zh_CN.UTF-8/s/^# //g' /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=en_US.UTF-8
+
+# Set environment variables for Chinese text rendering
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+ENV FONTCONFIG_PATH=/etc/fonts
+
+# Refresh font cache to ensure Chinese fonts are available
+RUN fc-cache -fv
 
 # Install Microsoft Edge and set as default browser
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-edge.gpg && \
@@ -250,6 +272,10 @@ RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor 
 
 # Create VSCode startup script
 RUN echo '#!/bin/bash' > /bin/code.sh && \
+    echo '# Set environment variables for Chinese text rendering' >> /bin/code.sh && \
+    echo 'export LANG=en_US.UTF-8' >> /bin/code.sh && \
+    echo 'export LC_ALL=en_US.UTF-8' >> /bin/code.sh && \
+    echo 'export FONTCONFIG_PATH=/etc/fonts' >> /bin/code.sh && \
     echo 'exec /usr/bin/code --no-sandbox --unity-launch "$@"' >> /bin/code.sh && \
     chmod +x /bin/code.sh && \
     chown coder:coder /bin/code.sh
