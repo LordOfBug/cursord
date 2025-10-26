@@ -134,7 +134,7 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
     rm -rf /var/lib/apt/lists/* && \
     # Create Edge startup script with necessary flags for containerized environment
     echo '#!/bin/bash' > /usr/bin/microsoft-edge-stable && \
-    echo 'exec /opt/microsoft/msedge/msedge --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-software-rasterizer --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-features=TranslateUI --disable-ipc-flooding-protection --no-first-run --no-default-browser-check "$@"' >> /usr/bin/microsoft-edge-stable && \
+    echo 'exec /opt/microsoft/msedge/msedge --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu --disable-software-rasterizer --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-features=TranslateUI --disable-ipc-flooding-protection --no-first-run --no-default-browser-check "$@"' >> /usr/bin/microsoft-edge-stable && \
     chmod +x /usr/bin/microsoft-edge-stable && \
     # Set as default browser
     update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/bin/microsoft-edge-stable 500 && \
