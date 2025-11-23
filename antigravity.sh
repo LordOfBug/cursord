@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APPDIR=/usr/local/cursor
+APPDIR=/usr/local/antigravity
 
 # start dbus
 dbus-daemon --system --fork

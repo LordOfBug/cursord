@@ -1,12 +1,12 @@
-# Cursor In Docker
+# Antigravity In Docker
 
-Run Cursor IDE in Docker with Ubuntu base image. Enjoy!!
+Run Antigravity IDE in Docker with Ubuntu base image. Enjoy!!
 
 ## What it is
 
-This project provides a Docker container that allows you to run [Cursor](https://cursor.sh/), an AI-first code editor, in an Ubuntu environment. This is particularly useful for:
-- Running Cursor in a containerized environment
-- Testing Cursor in Ubuntu without modifying your host system
+This project provides a Docker container that allows you to run [Antigravity](https://antigravity.google/), an AI-first code editor, in an Ubuntu environment. This is particularly useful for:
+- Running Antigravity in a containerized environment
+- Testing Antigravity in Ubuntu without modifying your host system
 - Ensuring consistent development environment across different machines
 
 The prebuild version is available on Docker Hub as [buglord/cursord:latest](https://hub.docker.com/r/buglord/cursord)
@@ -29,26 +29,26 @@ The desktop version provides a full Ubuntu desktop environment accessible via RD
 ## Features
 
 - Ubuntu 22.04 base with XFCE4 desktop environment
-- Pre-installed Cursor editor with desktop shortcut
+- Pre-installed Antigravity editor with desktop shortcut
 - Google Chrome browser
 - Remote access via RDP
 - Automatic version tracking and builds
-- Easy in-container Cursor upgrades
+- Easy in-container Antigravity upgrades
 
-## Upgrading Cursor
+## Upgrading Antigravity
 
-To upgrade your Cursor installation to the latest version:
+To upgrade your Antigravity installation to the latest version:
 
 1. Connect to the container via RDP
 2. Open a terminal
 3. Run the upgrade script:
    ```bash
-   /bin/upgrade-cursor.sh
+   /bin/upgrade-antigravity.sh
    ```
 
 The upgrade process will:
 - Download the latest version
-- Safely close any running Cursor instances
+- Safely close any running Antigravity instances
 - Install the new version
 - Preserve your settings
 
@@ -62,7 +62,7 @@ The upgrade process will:
 
 2. Build using the provided script:
    ```bash
-   # Build with latest Cursor version
+   # Build with latest Antigravity version
    ./build.sh
 
    # Or specify a version
@@ -72,7 +72,7 @@ The upgrade process will:
 ## Automated Builds
 
 This repository includes GitHub Actions workflow that:
-- Checks for new Cursor versions every 12 hours
+- Checks for new Antigravity versions every 12 hours
 - Automatically builds and pushes new versions to Docker Hub
 - Maintains the `latest` tag
 - Allows manual workflow triggers
@@ -84,9 +84,9 @@ This repository includes GitHub Actions workflow that:
 1. RDP Connection Failed
    - Ensure port 3389 is not blocked by firewall
    - Check if container is running: `docker ps`
-   - Check container logs: `docker logs cursor`
+   - Check container logs: `docker logs antigravity`
 
-2. Cursor Not Starting
+2. Antigravity Not Starting
    - Check container logs
    - Ensure container has enough resources
    - Try restarting the container

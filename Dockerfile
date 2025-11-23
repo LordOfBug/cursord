@@ -4,8 +4,8 @@ FROM ubuntu:22.04
 # Set non-interactive mode for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Add build argument for Cursor download URL
-ARG CURSOR_DOWNLOAD_URL=https://downloader.cursor.sh/linux
+# Add build argument for Antigravity download URL
+ARG ANTIGRAVITY_DOWNLOAD_URL=https://antigravity.google/download/linux
 
 # Define ARGs for Windsurf version and URL
 ARG WINDSURF_URL
@@ -13,7 +13,7 @@ ARG WINDSURF_URL
 ARG WINDSURF_VERSION
 
 # Verify build argument is provided
-RUN test -n "$CURSOR_DOWNLOAD_URL" || (echo "CURSOR_DOWNLOAD_URL build argument is required" && false)
+RUN test -n "$ANTIGRAVITY_DOWNLOAD_URL" || (echo "ANTIGRAVITY_DOWNLOAD_URL build argument is required" && false)
 
 # Install essential dependencies
 RUN apt-get update && apt-get install -y \
@@ -183,35 +183,35 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
-# Download cursor from cursor.sh
-RUN wget -O /tmp/cursor.app "${CURSOR_DOWNLOAD_URL}" && \
-    chmod +x /tmp/cursor.app && \
-    /tmp/cursor.app --appimage-extract && \
-    mv squashfs-root /usr/local/cursor && \
-    chown -R coder:coder /usr/local/cursor && \
-    rm /tmp/cursor.app
+# Download Antigravity
+RUN wget -O /tmp/antigravity.app "${ANTIGRAVITY_DOWNLOAD_URL}" && \
+    chmod +x /tmp/antigravity.app && \
+    /tmp/antigravity.app --appimage-extract && \
+    mv squashfs-root /usr/local/antigravity && \
+    chown -R coder:coder /usr/local/antigravity && \
+    rm /tmp/antigravity.app
 
-# Copy cursor startup script
-COPY cursor-ubuntu.sh /bin/cursor.sh
-RUN chmod +x /bin/cursor.sh && \
-    chown coder:coder /bin/cursor.sh
+# Copy Antigravity startup script
+COPY antigravity-ubuntu.sh /bin/antigravity.sh
+RUN chmod +x /bin/antigravity.sh && \
+    chown coder:coder /bin/antigravity.sh
 
-# Create desktop shortcut for Cursor
+# Create desktop shortcut for Antigravity
 RUN mkdir -p /home/coder/Desktop && \
-    echo "[Desktop Entry]" > /home/coder/Desktop/cursor.desktop && \
-    echo "Name=Cursor" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Exec=/bin/cursor.sh" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Icon=/usr/local/cursor/resources/app/resources/linux/code.png" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Terminal=false" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Type=Application" >> /home/coder/Desktop/cursor.desktop && \
-    echo "Categories=Development;" >> /home/coder/Desktop/cursor.desktop && \
-    chmod +x /home/coder/Desktop/cursor.desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/antigravity.desktop && \
+    echo "Name=Antigravity" >> /home/coder/Desktop/antigravity.desktop && \
+    echo "Exec=/bin/antigravity.sh" >> /home/coder/Desktop/antigravity.desktop && \
+    echo "Icon=/usr/local/antigravity/resources/app/resources/linux/code.png" >> /home/coder/Desktop/antigravity.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/antigravity.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/antigravity.desktop && \
+    echo "Categories=Development;" >> /home/coder/Desktop/antigravity.desktop && \
+    chmod +x /home/coder/Desktop/antigravity.desktop && \
     chown -R coder:coder /home/coder/Desktop
 
 # Copy and setup upgrade script
-COPY upgrade-cursor.sh /bin/upgrade-cursor.sh
-RUN chmod +x /bin/upgrade-cursor.sh && \
-    chown coder:coder /bin/upgrade-cursor.sh
+COPY upgrade-antigravity.sh /bin/upgrade-antigravity.sh
+RUN chmod +x /bin/upgrade-antigravity.sh && \
+    chown coder:coder /bin/upgrade-antigravity.sh
 
 # Install windsurf using provided URL
 RUN echo "Installing Windsurf version: ${WINDSURF_VERSION} from ${WINDSURF_URL}" && \

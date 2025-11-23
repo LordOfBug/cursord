@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export APPDIR=/usr/local/cursor
+export APPDIR=/usr/local/antigravity
 
 # Set environment variables for Chinese text rendering
 export LANG=en_US.UTF-8

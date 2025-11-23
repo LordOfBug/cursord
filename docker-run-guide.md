@@ -6,7 +6,7 @@ To prevent IDE crashes during file operations and window resizing, use these par
 
 ```bash
 docker run -d \
-  --name cursord-ide \
+  --name antigravity-ide \
   --shm-size=2g \
   --memory=8g \
   --cpus=4 \
@@ -36,7 +36,7 @@ If you need a simpler setup:
 
 ```bash
 docker run -d \
-  --name cursord-ide \
+  --name antigravity-ide \
   --shm-size=2g \
   -p 3389:3389 \
   your-image-name
@@ -48,16 +48,16 @@ If you still experience crashes:
 
 1. Increase `--shm-size` to 4g or higher
 2. Add `--privileged` flag (less secure but more compatible)
-3. Check container logs: `docker logs cursord-ide`
-4. Monitor memory usage: `docker stats cursord-ide`
+3. Check container logs: `docker logs antigravity-ide`
+4. Monitor memory usage: `docker stats antigravity-ide`
 
 ## Performance Monitoring
 
 Monitor container resources:
 ```bash
 # Check memory and CPU usage
-docker stats cursord-ide
+docker stats antigravity-ide
 
 # Check shared memory usage
-docker exec cursord-ide df -h /dev/shm
+docker exec antigravity-ide df -h /dev/shm
 ```
