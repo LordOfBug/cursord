@@ -4,16 +4,10 @@ FROM ubuntu:22.04
 # Set non-interactive mode for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Add build argument for Antigravity download URL
-ARG ANTIGRAVITY_DOWNLOAD_URL=https://antigravity.google/download/linux
-
 # Define ARGs for Windsurf version and URL
 ARG WINDSURF_URL
 
 ARG WINDSURF_VERSION
-
-# Verify build argument is provided
-RUN test -n "$ANTIGRAVITY_DOWNLOAD_URL" || (echo "ANTIGRAVITY_DOWNLOAD_URL build argument is required" && false)
 
 # Install essential dependencies
 RUN apt-get update && apt-get install -y \
@@ -183,13 +177,17 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
-# Download Antigravity
-RUN wget -O /tmp/antigravity.app "${ANTIGRAVITY_DOWNLOAD_URL}" && \
-    chmod +x /tmp/antigravity.app && \
-    /tmp/antigravity.app --appimage-extract && \
-    mv squashfs-root /usr/local/antigravity && \
-    chown -R coder:coder /usr/local/antigravity && \
-    rm /tmp/antigravity.app
+# Install Antigravity using apt repository
+RUN echo "Installing Antigravity from official apt repository..." && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg | \
+      gpg --dearmor -o /etc/apt/keyrings/antigravity-repo-key.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main" | \
+      tee /etc/apt/sources.list.d/antigravity.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y antigravity && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy Antigravity startup script
 COPY antigravity-ubuntu.sh /bin/antigravity.sh
@@ -201,7 +199,7 @@ RUN mkdir -p /home/coder/Desktop && \
     echo "[Desktop Entry]" > /home/coder/Desktop/antigravity.desktop && \
     echo "Name=Antigravity" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Exec=/bin/antigravity.sh" >> /home/coder/Desktop/antigravity.desktop && \
-    echo "Icon=/usr/local/antigravity/resources/app/resources/linux/code.png" >> /home/coder/Desktop/antigravity.desktop && \
+    echo "Icon=antigravity" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Terminal=false" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Type=Application" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Categories=Development;" >> /home/coder/Desktop/antigravity.desktop && \

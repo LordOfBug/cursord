@@ -1,14 +1,12 @@
 #!/bin/bash
 
-export APPDIR=/usr/local/antigravity
-
 # Set environment variables for Chinese text rendering
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 export FONTCONFIG_PATH=/etc/fonts
 
 # start app with stability flags for containerized environment
-$APPDIR/AppRun \
+/usr/bin/antigravity \
     --no-sandbox \
     --disable-dev-shm-usage \
     --disable-gpu \

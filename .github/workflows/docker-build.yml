@@ -40,8 +40,10 @@ jobs:
 
       - name: Set Antigravity details
         run: |
-          echo "ANTIGRAVITY_VERSION=latest" >> $GITHUB_ENV
-          echo "ANTIGRAVITY_DOWNLOAD_URL=https://antigravity.google/download/linux" >> $GITHUB_ENV
+          # Use date-based versioning for Antigravity to ensure nightly builds
+          ANTIGRAVITY_VERSION=$(date -u +%Y%m%d)
+          echo "ANTIGRAVITY_VERSION=${ANTIGRAVITY_VERSION}" >> $GITHUB_ENV
+          echo "Antigravity version (date-based): ${ANTIGRAVITY_VERSION}"
 
       - name: Get latest Windsurf version
         id: windsurf_version
@@ -136,7 +138,6 @@ jobs:
           file: Dockerfile
           push: true
           build-args: |
-            ANTIGRAVITY_DOWNLOAD_URL=${{ env.ANTIGRAVITY_DOWNLOAD_URL }}
             WINDSURF_URL=${{ env.WINDSURF_URL }}
             WINDSURF_VERSION=${{ env.WINDSURF_VERSION }}
           tags: |
