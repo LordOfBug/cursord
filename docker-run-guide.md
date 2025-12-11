@@ -61,3 +61,76 @@ docker stats antigravity-ide
 # Check shared memory usage
 docker exec antigravity-ide df -h /dev/shm
 ```
+
+## Transparent Proxy Mode
+
+The image supports transparent proxying - applications inside the container will be completely unaware of the proxy while all HTTP/HTTPS traffic is automatically routed through it.
+
+### How It Works
+
+- Mount a `redsocks.conf` file to `/etc/redsocks.conf`
+- If the file exists and is non-empty, transparent proxy is **enabled**
+- If the file doesn't exist, transparent proxy is **disabled** (normal mode)
+
+### Running with Transparent Proxy
+
+**Step 1: Create a redsocks.conf file on your host:**
+
+```conf
+base {
+    log_debug = off;
+    log_info = on;
+    log = "syslog:daemon";
+    daemon = on;
+    redirector = iptables;
+}
+
+redsocks {
+    local_ip = 127.0.0.1;
+    local_port = 12345;
+    
+    // Your proxy server
+    ip = 192.168.1.50;
+    port = 8080;
+    
+    // Use 'http-connect' for HTTP proxies, 'socks5' for SOCKS5
+    type = http-connect;
+    
+    // Optional authentication (uncomment if needed)
+    // login = "username";
+    // password = "password";
+}
+```
+
+**Step 2: Run the container with the config mounted:**
+
+```bash
+docker run -d \
+  --name antigravity-ide \
+  --cap-add=NET_ADMIN \
+  -v /path/to/redsocks.conf:/etc/redsocks.conf:ro \
+  --shm-size=2g \
+  -p 3389:3389 \
+  your-image-name
+```
+
+### Important Notes
+
+- **`--cap-add=NET_ADMIN` is required** when mounting the config. The container needs this capability to modify iptables rules.
+- The proxy intercepts traffic on ports 80 (HTTP) and 443 (HTTPS).
+- Local/private network traffic (10.x.x.x, 172.16.x.x, 192.168.x.x, etc.) is NOT proxied.
+- The proxy server IP is automatically excluded to prevent infinite loops.
+
+### Verifying Proxy is Active
+
+```bash
+# Check container logs for proxy status
+docker logs antigravity-ide | grep -i proxy
+
+# Verify iptables rules are applied
+docker exec antigravity-ide iptables -t nat -L REDSOCKS
+
+# Check redsocks is running
+docker exec antigravity-ide pgrep -x redsocks
+```
+

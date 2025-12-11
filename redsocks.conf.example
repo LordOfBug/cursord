@@ -1,0 +1,23 @@
+base {
+    log_debug = off;
+    log_info = on;
+    log = "syslog:daemon";
+    daemon = on;
+    redirector = iptables;
+}
+
+redsocks {
+    local_ip = 127.0.0.1;
+    local_port = 12345;
+    
+    // Your proxy server - CHANGE THESE VALUES
+    ip = 192.168.1.50;
+    port = 8080;
+    
+    // Use 'http-connect' for HTTP proxies, 'socks5' for SOCKS5 proxies
+    type = http-connect;
+    
+    // Optional authentication (uncomment if needed)
+    // login = "username";
+    // password = "password";
+}

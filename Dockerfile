@@ -99,6 +99,10 @@ RUN apt-get update && apt-get install -y \
     # Process and system utilities
     htop \
     
+    # Transparent proxy support (redsocks + iptables)
+    iptables \
+    redsocks \
+    
     # Locale support for Chinese
     locales \
     && apt-get clean \
@@ -315,5 +319,10 @@ RUN echo "[program:ensure_machine_id]" >> /etc/supervisor/conf.d/supervisord.con
 # Expose XRDP port
 EXPOSE 3389
 
-# Set entrypoint to supervisord
-ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Copy transparent proxy scripts
+COPY transparent-proxy.sh /usr/local/bin/transparent-proxy.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/transparent-proxy.sh /usr/local/bin/entrypoint.sh
+
+# Set entrypoint to our wrapper (which handles proxy setup then starts supervisord)
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
