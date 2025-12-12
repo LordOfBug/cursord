@@ -127,10 +127,36 @@ docker run -d \
 # Check container logs for proxy status
 docker logs antigravity-ide | grep -i proxy
 
+
 # Verify iptables rules are applied
 docker exec antigravity-ide iptables -t nat -L REDSOCKS
 
 # Check redsocks is running
 docker exec antigravity-ide pgrep -x redsocks
+```
+
+## Web Development Configuration
+
+### Customizing Nginx
+
+To use your own `nginx.conf`, mount it into the container:
+
+```bash
+docker run -d \
+  ... \
+  -v /path/to/your/nginx.conf:/etc/nginx/nginx.conf:ro \
+  ...
+```
+
+### Customizing /etc/hosts
+
+To add entries to `/etc/hosts` inside the container, use the `--add-host` flag. This is preferred over mounting `/etc/hosts` directly, as it avoids permission issues and allows Docker to manage the file.
+
+```bash
+docker run -d \
+  ... \
+  --add-host my.dev.site:127.0.0.1 \
+  --add-host api.internal:192.168.1.50 \
+  ...
 ```
 

@@ -130,6 +130,14 @@ ENV FONTCONFIG_PATH=/etc/fonts
 # Refresh font cache to ensure Chinese fonts are available
 RUN fc-cache -fv
 
+# Install Node.js 20.x and Nginx
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && \
+    apt-get install -y nodejs nginx && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+
 # Install Microsoft Edge and set as default browser
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-edge.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-edge.gpg] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list && \
