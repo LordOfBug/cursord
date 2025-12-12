@@ -67,6 +67,7 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libgl1-mesa-glx \
     libgbm-dev \
+    libxshmfence1 \
 
     # Audio and multimedia
     libasound2 \
@@ -98,6 +99,12 @@ RUN apt-get update && apt-get install -y \
 
     # Process and system utilities
     htop \
+    strace \
+    gdb \
+    lsof \
+    net-tools \
+    iputils-ping \
+    mesa-utils \
     
     # Transparent proxy support (redsocks + iptables)
     iptables \
@@ -278,7 +285,7 @@ RUN echo '#!/bin/bash' > /bin/code.sh && \
     echo 'export LANG=en_US.UTF-8' >> /bin/code.sh && \
     echo 'export LC_ALL=en_US.UTF-8' >> /bin/code.sh && \
     echo 'export FONTCONFIG_PATH=/etc/fonts' >> /bin/code.sh && \
-    echo 'exec /usr/bin/code --no-sandbox --unity-launch "$@"' >> /bin/code.sh && \
+    echo 'exec /usr/bin/code --no-sandbox --disable-dev-shm-usage --unity-launch "$@"' >> /bin/code.sh && \
     chmod +x /bin/code.sh && \
     chown coder:coder /bin/code.sh
 
