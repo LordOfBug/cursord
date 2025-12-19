@@ -7,7 +7,8 @@ echo "Starting Antigravity upgrade process..."
 
 # Stop Antigravity if it's running
 echo "Stopping any running Antigravity instances..."
-pkill -f "antigravity" || true
+# pkill -f "antigravity" || true
+pgrep -f "antigravity" | grep -v "^$$\$" | xargs -r kill || true
 
 # Update package list and upgrade Antigravity
 echo "Updating package list..."
