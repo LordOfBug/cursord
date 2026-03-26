@@ -47,13 +47,6 @@ setup_transparent_proxy() {
         echo "   - Proxy server: $PROXY_IP:$PROXY_PORT"
     fi
 
-    # ==========================================
-    # DNS: Force reliable public DNS servers
-    # ==========================================
-    echo ">> Setting DNS to 1.1.1.1 and 8.8.8.8..."
-    echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
-    echo "   - resolv.conf updated"
-
     # Start redsocks daemon
     echo ">> Starting redsocks daemon..."
     redsocks -c "$REDSOCKS_CONF"
@@ -72,19 +65,12 @@ setup_transparent_proxy() {
     echo ">> Applying iptables NAT rules..."
 
     # ==========================================
-    # 1. CLEANUP PREVIOUS RULES
-    # ==========================================
-    iptables -t nat -F OUTPUT 2>/dev/null
-    iptables -t nat -F REDSOCKS 2>/dev/null
-    iptables -t nat -X REDSOCKS 2>/dev/null
-
-    # ==========================================
-    # 2. HIJACK DNS (UDP Port 53 → redsocks dnstc on 5300)
+    # 1. HIJACK DNS (UDP Port 53 → redsocks dnstc on 5300)
     # ==========================================
     iptables -t nat -A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5300
 
     # ==========================================
-    # 3. CREATE THE TCP ROUTING CHAIN
+    # 2. CREATE THE TCP ROUTING CHAIN
     # ==========================================
     iptables -t nat -N REDSOCKS
 
@@ -104,7 +90,7 @@ setup_transparent_proxy() {
     iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
 
     # ==========================================
-    # 4. BYPASS DIRECT-CONNECT PORTS (RDP, VNC, SSH)
+    # 3. BYPASS DIRECT-CONNECT PORTS (RDP, VNC, SSH)
     #    These protocols don't work well through a SOCKS proxy.
     # ==========================================
     iptables -t nat -A REDSOCKS -p tcp --dport 3389 -j RETURN   # RDP
@@ -112,7 +98,7 @@ setup_transparent_proxy() {
     iptables -t nat -A REDSOCKS -p tcp --dport 22   -j RETURN   # SSH
 
     # ==========================================
-    # 5. REDIRECT ALL OTHER TCP TO REDSOCKS
+    # 4. REDIRECT ALL OTHER TCP TO REDSOCKS
     # ==========================================
     iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports "$REDSOCKS_PORT"
 
