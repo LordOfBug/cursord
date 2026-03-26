@@ -18,7 +18,7 @@ setup_transparent_proxy() {
     echo "   - Config file: $REDSOCKS_CONF"
 
     # Check if we have permission to modify network rules
-    if ! iptables -L >/dev/null 2>&1; then
+    if ! iptables -L > /dev/null 2>&1; then
         echo ""
         echo "========================================================"
         echo "ERROR: redsocks.conf found, but 'iptables' failed."
@@ -47,6 +47,13 @@ setup_transparent_proxy() {
         echo "   - Proxy server: $PROXY_IP:$PROXY_PORT"
     fi
 
+    # ==========================================
+    # DNS: Force reliable public DNS servers
+    # ==========================================
+    echo ">> Setting DNS to 1.1.1.1 and 8.8.8.8..."
+    echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
+    echo "   - resolv.conf updated"
+
     # Start redsocks daemon
     echo ">> Starting redsocks daemon..."
     redsocks -c "$REDSOCKS_CONF"
@@ -64,11 +71,30 @@ setup_transparent_proxy() {
     # Apply iptables rules
     echo ">> Applying iptables NAT rules..."
 
-    # Create REDSOCKS chain
-    iptables -t nat -N REDSOCKS 2>/dev/null || iptables -t nat -F REDSOCKS
+    # ==========================================
+    # 1. CLEANUP PREVIOUS RULES
+    # ==========================================
+    iptables -t nat -F OUTPUT 2>/dev/null
+    iptables -t nat -F REDSOCKS 2>/dev/null
+    iptables -t nat -X REDSOCKS 2>/dev/null
 
-    # Ignore local/private network traffic (don't proxy these)
+    # ==========================================
+    # 2. HIJACK DNS (UDP Port 53 → redsocks dnstc on 5300)
+    # ==========================================
+    iptables -t nat -A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5300
+
+    # ==========================================
+    # 3. CREATE THE TCP ROUTING CHAIN
+    # ==========================================
+    iptables -t nat -N REDSOCKS
+
+    # Prevent redsocks itself from being redirected (avoids infinite loop)
+    iptables -t nat -A OUTPUT -p tcp -m owner --uid-owner redsocks -j RETURN
+
+    # Bypass OrbStack / host-bridge network (0.x.x.x) so traffic can reach Mac host
     iptables -t nat -A REDSOCKS -d 0.0.0.0/8 -j RETURN
+
+    # Bypass standard local and private subnets
     iptables -t nat -A REDSOCKS -d 10.0.0.0/8 -j RETURN
     iptables -t nat -A REDSOCKS -d 127.0.0.0/8 -j RETURN
     iptables -t nat -A REDSOCKS -d 169.254.0.0/16 -j RETURN
@@ -77,22 +103,17 @@ setup_transparent_proxy() {
     iptables -t nat -A REDSOCKS -d 224.0.0.0/4 -j RETURN
     iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
 
-    # Exclude the proxy server itself to avoid infinite loops
-    if [ -n "$PROXY_IP" ]; then
-        iptables -t nat -A REDSOCKS -d "$PROXY_IP" -j RETURN
-    fi
+    # ==========================================
+    # 4. REDIRECT ALL TCP TO REDSOCKS
+    # ==========================================
+    iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports "$REDSOCKS_PORT"
 
-    # Redirect HTTP and HTTPS traffic to redsocks
-    iptables -t nat -A REDSOCKS -p tcp --dport 80 -j REDIRECT --to-ports "$REDSOCKS_PORT"
-    iptables -t nat -A REDSOCKS -p tcp --dport 443 -j REDIRECT --to-ports "$REDSOCKS_PORT"
-
-    # Optionally redirect all TCP traffic (uncomment if needed)
-    # iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports "$REDSOCKS_PORT"
-
-    # Apply the REDSOCKS chain to all outgoing traffic
+    # ==========================================
+    # 5. ACTIVATE — apply the chain to all outgoing TCP
+    # ==========================================
     iptables -t nat -A OUTPUT -p tcp -j REDSOCKS
 
-    echo ">> Transparent Proxy is ACTIVE"
+    echo ">> Transparent Proxy & DNS Hijack applied successfully!"
     echo ""
 }
 

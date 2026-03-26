@@ -104,6 +104,7 @@ RUN apt-get update && apt-get install -y \
     lsof \
     net-tools \
     iputils-ping \
+    telnet \
     mesa-utils \
     
     # Transparent proxy support (redsocks + iptables)
