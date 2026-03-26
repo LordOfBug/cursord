@@ -1,6 +1,8 @@
 name: Docker Build and Push
 
 on:
+  workflow_dispatch:  # Enable manual triggers from the GitHub UI
+
   schedule:
     - cron: '0 0 * * *'  # Run at 00:00 UTC every day
 
@@ -8,7 +10,7 @@ on:
     branches: [ "main" ]  # Run on pushes to main branch
     paths:
       - 'Dockerfile*'     # Run when Dockerfiles change
-      - 'build.sh'        # Run when build script changes
+      - '*.sh'            # Run when build script changes
       - '.github/workflows/*.yml'  # Run when workflows change
 
 env:
