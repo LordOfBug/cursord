@@ -104,7 +104,15 @@ setup_transparent_proxy() {
     iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
 
     # ==========================================
-    # 4. REDIRECT ALL TCP TO REDSOCKS
+    # 4. BYPASS DIRECT-CONNECT PORTS (RDP, VNC, SSH)
+    #    These protocols don't work well through a SOCKS proxy.
+    # ==========================================
+    iptables -t nat -A REDSOCKS -p tcp --dport 3389 -j RETURN   # RDP
+    iptables -t nat -A REDSOCKS -p tcp --dport 5900 -j RETURN   # VNC
+    iptables -t nat -A REDSOCKS -p tcp --dport 22   -j RETURN   # SSH
+
+    # ==========================================
+    # 5. REDIRECT ALL OTHER TCP TO REDSOCKS
     # ==========================================
     iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports "$REDSOCKS_PORT"
 

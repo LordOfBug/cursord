@@ -21,6 +21,7 @@ env:
   ADDITIONAL_REGISTRY_URL: ${{ vars.ADDITIONAL_REGISTRY_URL }}
   ADDITIONAL_REGISTRY_USERNAME: ${{ vars.ADDITIONAL_REGISTRY_USERNAME }}
   ADDITIONAL_IMAGE_NAME: ${{ vars.ADDITIONAL_IMAGE_NAME }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # Resolve Node.js 20 deprecation warning
 
 jobs:
   check-and-build:
@@ -134,7 +135,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Ubuntu Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
