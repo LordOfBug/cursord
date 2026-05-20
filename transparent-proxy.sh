@@ -36,14 +36,14 @@ setup_transparent_proxy() {
 
     # Extract the local port from config (default to 12345 if not found)
     if grep -q "local_port" "$REDSOCKS_CONF"; then
-        REDSOCKS_PORT=$(grep "local_port" "$REDSOCKS_CONF" | head -1 | sed 's/.*=\s*\([0-9]*\).*/\1/')
+        REDSOCKS_PORT=$(grep "local_port" "$REDSOCKS_CONF" | head -1 | sed 's/.*=\s*\([0-9]*\).*/\1/' | tr -d '[:space:]"')
         echo "   - Redsocks local port: $REDSOCKS_PORT"
     fi
 
     # Extract proxy server info for display (optional, just for logging)
     if grep -q "^[[:space:]]*ip\s*=" "$REDSOCKS_CONF"; then
-        PROXY_IP=$(grep "^[[:space:]]*ip\s*=" "$REDSOCKS_CONF" | head -1 | sed 's/.*=\s*\([^;]*\).*/\1/' | tr -d ' "')
-        PROXY_PORT=$(grep "^[[:space:]]*port\s*=" "$REDSOCKS_CONF" | head -1 | sed 's/.*=\s*\([0-9]*\).*/\1/')
+        PROXY_IP=$(grep "^[[:space:]]*ip\s*=" "$REDSOCKS_CONF" | head -1 | sed 's/.*=\s*\([^;]*\).*/\1/' | tr -d '[:space:]"')
+        PROXY_PORT=$(grep "^[[:space:]]*port\s*=" "$REDSOCKS_CONF" | head -1 | sed 's/.*=\s*\([0-9]*\).*/\1/' | tr -d '[:space:]"')
         echo "   - Proxy server: $PROXY_IP:$PROXY_PORT"
     fi
 
@@ -67,17 +67,18 @@ setup_transparent_proxy() {
     # ==========================================
     # 1. CLEANUP PREVIOUS RULES
     # ==========================================
-    iptables -t nat -F OUTPUT 2>/dev/null
-    iptables -t nat -F REDSOCKS 2>/dev/null
-    iptables -t nat -X REDSOCKS 2>/dev/null
+    iptables -t nat -F OUTPUT 2>/dev/null || true
+    iptables -t nat -F REDSOCKS 2>/dev/null || true
+    iptables -t nat -X REDSOCKS 2>/dev/null || true
 
     # ==========================================
     # 2. DNS CONFIGURATION
     # ==========================================
-    if [ -n "$PROXY_IP" ]; then
+    if [[ "$PROXY_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         echo ">> Setting DNS to host gateway $PROXY_IP (with 1.1.1.1 fallback)..."
         echo -e "nameserver $PROXY_IP\nnameserver 1.1.1.1" > /etc/resolv.conf
     else
+        PROXY_IP=""  # Ensure invalid/missing IP is empty
         echo ">> Setting DNS to 1.1.1.1 and 8.8.8.8..."
         echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
     fi
@@ -89,7 +90,7 @@ setup_transparent_proxy() {
     # Bypass UDP DNS queries to the host gateway IP.
     # This allows direct, ultra-fast UDP DNS resolution using the host's native resolver,
     # completely bypassing redsocks and avoiding slow/unreliable TCP fallbacks.
-    if [ -n "$PROXY_IP" ]; then
+    if [[ "$PROXY_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         iptables -t nat -A OUTPUT -p udp -d "$PROXY_IP" --dport 53 -j RETURN
     fi
     iptables -t nat -A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5300
