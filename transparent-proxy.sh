@@ -65,12 +65,37 @@ setup_transparent_proxy() {
     echo ">> Applying iptables NAT rules..."
 
     # ==========================================
-    # 1. HIJACK DNS (UDP Port 53 → redsocks dnstc on 5300)
+    # 1. CLEANUP PREVIOUS RULES
     # ==========================================
+    iptables -t nat -F OUTPUT 2>/dev/null
+    iptables -t nat -F REDSOCKS 2>/dev/null
+    iptables -t nat -X REDSOCKS 2>/dev/null
+
+    # ==========================================
+    # 2. DNS CONFIGURATION
+    # ==========================================
+    if [ -n "$PROXY_IP" ]; then
+        echo ">> Setting DNS to host gateway $PROXY_IP (with 1.1.1.1 fallback)..."
+        echo -e "nameserver $PROXY_IP\nnameserver 1.1.1.1" > /etc/resolv.conf
+    else
+        echo ">> Setting DNS to 1.1.1.1 and 8.8.8.8..."
+        echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
+    fi
+    echo "   - resolv.conf updated"
+
+    # ==========================================
+    # 3. HIJACK DNS (UDP Port 53 → redsocks dnstc on 5300)
+    # ==========================================
+    # Bypass UDP DNS queries to the host gateway IP.
+    # This allows direct, ultra-fast UDP DNS resolution using the host's native resolver,
+    # completely bypassing redsocks and avoiding slow/unreliable TCP fallbacks.
+    if [ -n "$PROXY_IP" ]; then
+        iptables -t nat -A OUTPUT -p udp -d "$PROXY_IP" --dport 53 -j RETURN
+    fi
     iptables -t nat -A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5300
 
     # ==========================================
-    # 2. CREATE THE TCP ROUTING CHAIN
+    # 4. CREATE THE TCP ROUTING CHAIN
     # ==========================================
     iptables -t nat -N REDSOCKS
 
@@ -90,7 +115,7 @@ setup_transparent_proxy() {
     iptables -t nat -A REDSOCKS -d 240.0.0.0/4 -j RETURN
 
     # ==========================================
-    # 3. BYPASS DIRECT-CONNECT PORTS (RDP, VNC, SSH)
+    # 5. BYPASS DIRECT-CONNECT PORTS (RDP, VNC, SSH)
     #    These protocols don't work well through a SOCKS proxy.
     # ==========================================
     iptables -t nat -A REDSOCKS -p tcp --dport 3389 -j RETURN   # RDP
@@ -98,12 +123,12 @@ setup_transparent_proxy() {
     iptables -t nat -A REDSOCKS -p tcp --dport 22   -j RETURN   # SSH
 
     # ==========================================
-    # 4. REDIRECT ALL OTHER TCP TO REDSOCKS
+    # 6. REDIRECT ALL OTHER TCP TO REDSOCKS
     # ==========================================
     iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports "$REDSOCKS_PORT"
 
     # ==========================================
-    # 5. ACTIVATE — apply the chain to all outgoing TCP
+    # 7. ACTIVATE — apply the chain to all outgoing TCP
     # ==========================================
     iptables -t nat -A OUTPUT -p tcp -j REDSOCKS
 
