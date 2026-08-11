@@ -3,8 +3,8 @@ name: Docker Build and Push
 on:
   workflow_dispatch:  # Enable manual triggers from the GitHub UI
 
-  schedule:
-    - cron: '0 0 * * *'  # Run at 00:00 UTC every day
+  # schedule:
+  #   - cron: '0 0 * * *'  # Run at 00:00 UTC every day
 
   push:
     branches: [ "main" ]  # Run on pushes to main branch
