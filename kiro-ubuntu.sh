@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export APPDIR=/usr/local/windsurf
+export APPDIR=/opt/kiro
 
 # Set environment variables for Chinese text rendering
 export LANG=en_US.UTF-8
@@ -24,8 +24,8 @@ STABILITY_FLAGS="--no-sandbox \
 # Check if a URL parameter was passed
 if [ $# -gt 0 ]; then
     # URL was passed, launch with the URL parameter
-    $APPDIR/windsurf $STABILITY_FLAGS --reuse-window --open-url "$1"
+    $APPDIR/kiro $STABILITY_FLAGS --reuse-window --open-url "$1"
 else
     # No URL, normal launch
-    $APPDIR/windsurf $STABILITY_FLAGS
+    $APPDIR/kiro $STABILITY_FLAGS
 fi

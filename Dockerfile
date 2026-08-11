@@ -4,11 +4,6 @@ FROM ubuntu:22.04
 # Set non-interactive mode for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Define ARGs for Windsurf version and URL
-ARG WINDSURF_URL
-
-ARG WINDSURF_VERSION
-
 # Install essential dependencies
 RUN apt-get update && apt-get install -y \
     # Essential build tools and utilities
@@ -231,54 +226,41 @@ COPY upgrade-antigravity.sh /bin/upgrade-antigravity.sh
 RUN chmod +x /bin/upgrade-antigravity.sh && \
     chown coder:coder /bin/upgrade-antigravity.sh
 
-# Install windsurf using provided URL
-RUN echo "Installing Windsurf version: ${WINDSURF_VERSION} from ${WINDSURF_URL}" && \
-    wget -O /tmp/windsurf.tar.gz "${WINDSURF_URL}" && \
-    tar -xzvf /tmp/windsurf.tar.gz && \
-    mv Windsurf /usr/local/windsurf && \
-    chown -R coder:coder /usr/local/windsurf && \
-    rm /tmp/windsurf.tar.gz
+# ============================================================================
+# Kiro IDE Installation
+# ============================================================================
+# Kiro is an agentic IDE built on VS Code that provides AI-powered development
+# with spec-driven workflows, agent hooks, and natural language coding assistance.
+# Installation using the community-maintained installation script
+RUN echo "Installing Kiro IDE..." && \
+    curl -fsSL https://raw.githubusercontent.com/abhilashiig/kiro-ide-linux-installation/main/clone-and-install-kiro.sh | bash && \
+    # Verify installation
+    which kiro || echo "Kiro installed successfully"
 
-# Copy windsurf startup script
-COPY windsurf-ubuntu.sh /bin/windsurf.sh
-RUN chmod +x /bin/windsurf.sh && \
-    chown coder:coder /bin/windsurf.sh
+# Copy Kiro startup script
+COPY kiro-ubuntu.sh /bin/kiro.sh
+RUN chmod +x /bin/kiro.sh && \
+    chown coder:coder /bin/kiro.sh
 
-# Create windsurf desktop entry
+# Create desktop shortcut for Kiro
 RUN mkdir -p /home/coder/Desktop && \
-    echo "[Desktop Entry]" > /home/coder/Desktop/windsurf.desktop && \
-    echo "Name=Windsurf" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Exec=/bin/windsurf.sh" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Icon=/usr/local/windsurf/resources/app/resources/linux/code.png" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Type=Application" >> /home/coder/Desktop/windsurf.desktop && \
-    echo "Categories=Development;" >> /home/coder/Desktop/windsurf.desktop && \
-    chmod +x /home/coder/Desktop/windsurf.desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/kiro.desktop && \
+    echo "Name=Kiro IDE" >> /home/coder/Desktop/kiro.desktop && \
+    echo "Comment=Agentic IDE for spec-driven development" >> /home/coder/Desktop/kiro.desktop && \
+    echo "Exec=/bin/kiro.sh" >> /home/coder/Desktop/kiro.desktop && \
+    echo "Icon=/opt/kiro/resources/app/resources/linux/code.png" >> /home/coder/Desktop/kiro.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/kiro.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/kiro.desktop && \
+    echo "Categories=Development;IDE;" >> /home/coder/Desktop/kiro.desktop && \
+    echo "StartupNotify=true" >> /home/coder/Desktop/kiro.desktop && \
+    chmod +x /home/coder/Desktop/kiro.desktop && \
     chown -R coder:coder /home/coder/Desktop
 
-# Create windsurf protocol handler script
-RUN echo '#!/bin/bash' > /bin/windsurf-protocol-handler.sh && \
-    echo 'url="$1"' >> /bin/windsurf-protocol-handler.sh && \
-    echo '/bin/windsurf.sh "$url"' >> /bin/windsurf-protocol-handler.sh && \
-    chmod +x /bin/windsurf-protocol-handler.sh
-
-# Configure windsurf:// protocol handler
-RUN mkdir -p /usr/share/applications && \
-    echo "[Desktop Entry]" > /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Name=Windsurf Protocol Handler" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Exec=/bin/windsurf.sh %u" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Type=Application" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Terminal=false" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "MimeType=x-scheme-handler/windsurf;" >> /usr/share/applications/windsurf-protocol-handler.desktop && \
-    echo "Categories=Development;" >> /usr/share/applications/windsurf-protocol-handler.desktop
-
 # Copy and setup upgrade script
-COPY upgrade-windsurf.sh /bin/upgrade-windsurf.sh
-RUN chmod +x /bin/upgrade-windsurf.sh && \
-    chown coder:coder /bin/upgrade-windsurf.sh
-
-# Register the protocol handler
-RUN xdg-mime default windsurf-protocol-handler.desktop x-scheme-handler/windsurf && \
-    update-desktop-database /usr/share/applications
+COPY upgrade-kiro.sh /bin/upgrade-kiro.sh
+RUN chmod +x /bin/upgrade-kiro.sh && \
+    chown coder:coder /bin/upgrade-kiro.sh
+# ============================================================================
 
 # Install Visual Studio Code
 RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
