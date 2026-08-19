@@ -105,7 +105,6 @@ RUN apt-get update && apt-get install -y \
     # Transparent proxy support (redsocks + iptables)
     iptables \
     redsocks \
-    
     # Locale support for Chinese
     locales \
     && apt-get clean \

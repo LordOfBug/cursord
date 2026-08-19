@@ -105,6 +105,7 @@ jobs:
           context: .
           file: Dockerfile
           push: true
+          provenance: false
           tags: ${{ steps.prepare_tags.outputs.tags }}
 
       - name: Log out from Docker Hub
