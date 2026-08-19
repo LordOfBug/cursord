@@ -60,15 +60,15 @@ else
 fi
 
 # Check if desktop application was installed
-if [ -f "/opt/OpenCode/opencode" ] || [ -f "/usr/bin/opencode-desktop" ] || [ -f "/usr/share/applications/opencode.desktop" ]; then
+if [ -f "/opt/OpenCode/ai.opencode.desktop" ] || [ -f "/opt/OpenCode/opencode" ] || [ -f "/usr/bin/opencode-desktop" ] || [ -f "/usr/share/applications/opencode.desktop" ]; then
     echo "OpenCode Desktop application installed successfully!"
 else
     echo "Desktop application may not be installed. Creating desktop entry..."
     
     # Try to locate the OpenCode executable
-    OPENCODE_EXEC=$(find /opt -name "opencode" -type f 2>/dev/null | head -n 1)
+    OPENCODE_EXEC=$(find /opt -maxdepth 3 -type f \( -name "ai.opencode.desktop" -o -name "opencode" \) 2>/dev/null | head -n 1)
     if [ -z "$OPENCODE_EXEC" ]; then
-        OPENCODE_EXEC=$(which opencode 2>/dev/null || echo "/usr/bin/opencode")
+        OPENCODE_EXEC=$(which opencode 2>/dev/null || echo "/opt/OpenCode/ai.opencode.desktop")
     fi
     
     # Create desktop entry if it doesn't exist
@@ -81,7 +81,7 @@ Name=OpenCode
 GenericName=AI Coding Agent
 Comment=Open source AI coding agent built for the terminal
 Exec=$OPENCODE_EXEC
-Icon=opencode
+Icon=ai.opencode.desktop
 Terminal=false
 Categories=Development;IDE;
 Keywords=code;development;ai;coding;agent;
@@ -96,13 +96,13 @@ EOF
         dpkg-deb -x ./opencode.deb extracted/
         
         # Look for icon files in the extracted package
-        ICON_FILE=$(find extracted/ -name "opencode*.png" -o -name "icon.png" | head -n 1)
+        ICON_FILE=$(find extracted/ -name "ai.opencode.desktop.png" -o -name "opencode*.png" -o -name "icon.png" | head -n 1)
         if [ -n "$ICON_FILE" ]; then
             # Determine icon size (default to 512x512 if unknown)
             ICON_SIZE="512x512"
             mkdir -p "$ICON_DIR/$ICON_SIZE/apps"
-            cp "$ICON_FILE" "$ICON_DIR/$ICON_SIZE/apps/opencode.png"
-            echo "Icon installed at $ICON_DIR/$ICON_SIZE/apps/opencode.png"
+            cp "$ICON_FILE" "$ICON_DIR/$ICON_SIZE/apps/ai.opencode.desktop.png"
+            echo "Icon installed at $ICON_DIR/$ICON_SIZE/apps/ai.opencode.desktop.png"
         fi
     fi
     

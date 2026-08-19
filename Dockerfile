@@ -287,7 +287,9 @@ RUN echo '#!/bin/bash' > /bin/opencode.sh && \
     echo 'export FONTCONFIG_PATH=/etc/fonts' >> /bin/opencode.sh && \
     echo '' >> /bin/opencode.sh && \
     echo '# Try to find and launch OpenCode desktop app' >> /bin/opencode.sh && \
-    echo 'if [ -f "/opt/OpenCode/opencode" ]; then' >> /bin/opencode.sh && \
+    echo 'if [ -f "/opt/OpenCode/ai.opencode.desktop" ]; then' >> /bin/opencode.sh && \
+    echo '    exec /opt/OpenCode/ai.opencode.desktop --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
+    echo 'elif [ -f "/opt/OpenCode/opencode" ]; then' >> /bin/opencode.sh && \
     echo '    exec /opt/OpenCode/opencode --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
     echo 'elif [ -f "/usr/bin/opencode-desktop" ]; then' >> /bin/opencode.sh && \
     echo '    exec /usr/bin/opencode-desktop --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
@@ -304,7 +306,7 @@ RUN mkdir -p /home/coder/Desktop && \
     echo "Name=OpenCode" >> /home/coder/Desktop/opencode.desktop && \
     echo "Comment=Open source AI coding agent" >> /home/coder/Desktop/opencode.desktop && \
     echo "Exec=/bin/opencode.sh" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Icon=opencode" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Icon=ai.opencode.desktop" >> /home/coder/Desktop/opencode.desktop && \
     echo "Terminal=false" >> /home/coder/Desktop/opencode.desktop && \
     echo "Type=Application" >> /home/coder/Desktop/opencode.desktop && \
     echo "Categories=Development;IDE;" >> /home/coder/Desktop/opencode.desktop && \
