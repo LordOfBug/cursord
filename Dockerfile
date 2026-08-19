@@ -262,6 +262,64 @@ RUN chmod +x /bin/upgrade-kiro.sh && \
     chown coder:coder /bin/upgrade-kiro.sh
 # ============================================================================
 
+# ============================================================================
+# OpenCode Installation
+# ============================================================================
+# OpenCode is an open source AI coding agent built for the terminal and desktop.
+# It provides AI-powered coding assistance with support for multiple AI providers.
+# Installation using the official .deb package from GitHub releases
+
+# Copy OpenCode installation script
+COPY opencode-ubuntu.sh /tmp/opencode-ubuntu.sh
+RUN chmod +x /tmp/opencode-ubuntu.sh
+
+# Run installation script
+RUN /tmp/opencode-ubuntu.sh && \
+    rm -f /tmp/opencode-ubuntu.sh
+
+# Verify OpenCode installation
+RUN which opencode || echo "OpenCode installed successfully"
+
+# Create OpenCode startup script for desktop app
+RUN echo '#!/bin/bash' > /bin/opencode.sh && \
+    echo '# Set environment variables for proper rendering' >> /bin/opencode.sh && \
+    echo 'export LANG=en_US.UTF-8' >> /bin/opencode.sh && \
+    echo 'export LC_ALL=en_US.UTF-8' >> /bin/opencode.sh && \
+    echo 'export FONTCONFIG_PATH=/etc/fonts' >> /bin/opencode.sh && \
+    echo '' >> /bin/opencode.sh && \
+    echo '# Try to find and launch OpenCode desktop app' >> /bin/opencode.sh && \
+    echo 'if [ -f "/opt/OpenCode/opencode" ]; then' >> /bin/opencode.sh && \
+    echo '    exec /opt/OpenCode/opencode --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
+    echo 'elif [ -f "/usr/bin/opencode-desktop" ]; then' >> /bin/opencode.sh && \
+    echo '    exec /usr/bin/opencode-desktop --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
+    echo 'else' >> /bin/opencode.sh && \
+    echo '    # Fallback to terminal version' >> /bin/opencode.sh && \
+    echo '    exec xfce4-terminal -e opencode' >> /bin/opencode.sh && \
+    echo 'fi' >> /bin/opencode.sh && \
+    chmod +x /bin/opencode.sh && \
+    chown coder:coder /bin/opencode.sh
+
+# Create desktop shortcut for OpenCode
+RUN mkdir -p /home/coder/Desktop && \
+    echo "[Desktop Entry]" > /home/coder/Desktop/opencode.desktop && \
+    echo "Name=OpenCode" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Comment=Open source AI coding agent" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Exec=/bin/opencode.sh" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Icon=opencode" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Categories=Development;IDE;" >> /home/coder/Desktop/opencode.desktop && \
+    echo "StartupNotify=true" >> /home/coder/Desktop/opencode.desktop && \
+    echo "Keywords=code;development;ai;coding;agent;" >> /home/coder/Desktop/opencode.desktop && \
+    chmod +x /home/coder/Desktop/opencode.desktop && \
+    chown -R coder:coder /home/coder/Desktop
+
+# Copy and setup upgrade script
+COPY upgrade-opencode.sh /bin/upgrade-opencode.sh
+RUN chmod +x /bin/upgrade-opencode.sh && \
+    chown coder:coder /bin/upgrade-opencode.sh
+# ============================================================================
+
 # Install Visual Studio Code
 RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list && \

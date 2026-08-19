@@ -1,12 +1,13 @@
-# Antigravity & Kiro In Docker
+# Antigravity, Kiro & OpenCode In Docker
 
-Run Antigravity and Kiro IDEs in Docker with Ubuntu base image. Enjoy!!
+Run Antigravity, Kiro, and OpenCode AI-powered IDEs in Docker with Ubuntu base image. Enjoy!!
 
 ## What it is
 
 This project provides a Docker container that allows you to run AI-powered IDEs in an Ubuntu environment:
 - [Antigravity](https://antigravity.google/) - An AI-first code editor
 - [Kiro](https://kiro.dev/) - An agentic IDE with spec-driven development
+- [OpenCode](https://opencode.ai/) - Open source AI coding agent built for the terminal and desktop
 
 This is particularly useful for:
 - Running AI IDEs in a containerized environment
@@ -36,6 +37,7 @@ The desktop version provides a full Ubuntu desktop environment accessible via RD
 - **Pre-installed AI Editors**:
   - **Antigravity**: AI-first code editor from Google.
   - **Kiro**: Agentic IDE with spec-driven development, agent hooks, and natural language coding assistance.
+  - **OpenCode**: Open source AI coding agent with terminal and desktop interfaces.
   - **VSCode**: Visual Studio Code with custom startup flags for container stability.
 - **Default Browser**: **Microsoft Edge** (configured with flags for container/no-sandbox environments).
 - **Development Stack**:
@@ -100,6 +102,15 @@ To upgrade your AI IDE installations to the latest versions:
 3. Run the upgrade script:
    ```bash
    /bin/upgrade-kiro.sh
+   ```
+
+### Upgrade OpenCode
+
+1. Connect to the container via RDP
+2. Open a terminal
+3. Run the upgrade script:
+   ```bash
+   /bin/upgrade-opencode.sh
    ```
 
 ## Building Locally
