@@ -355,13 +355,9 @@ RUN echo "[Desktop Entry]" > /home/coder/Desktop/vscode.desktop && \
 RUN rm -f /etc/machine-id
 
 COPY install-zero-omega.sh /usr/bin/install-zero-omega.sh
-RUN chmod +x /usr/bin/install-zero-omega.sh
-# Run as coder user to install extension in user profile
-USER coder
-# Ensure PATH includes standard directories and install required tools are available
-ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-RUN /usr/bin/install-zero-omega.sh
-USER root
+RUN chmod +x /usr/bin/install-zero-omega.sh && \
+    # Install ZeroOmega extension via Edge policy system
+    /usr/bin/install-zero-omega.sh
 
 # Setup supervisord entry for ensure machine id
 COPY ensure_machine_id.sh /usr/bin/ensure_machine_id.sh
