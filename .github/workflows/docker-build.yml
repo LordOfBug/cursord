@@ -48,39 +48,6 @@ jobs:
           echo "ANTIGRAVITY_VERSION=${ANTIGRAVITY_VERSION}" >> $GITHUB_ENV
           echo "Antigravity version (date-based): ${ANTIGRAVITY_VERSION}"
 
-      - name: Get latest Windsurf version
-        id: windsurf_version
-        run: |
-          # Fetch the latest version information
-          VERSION_INFO=$(curl -s https://windsurf-stable.codeium.com/api/update/linux-x64/stable/latest)
-          
-          # Extract relevant information using grep and sed
-          WINDSURF_URL=$(echo "$VERSION_INFO" | grep -o '"url":"[^"]*"' | sed 's/"url":"\(.*\)"/\1/')
-          WINDSURF_VERSION=$(echo "$VERSION_INFO" | grep -o '"windsurfVersion":"[^"]*"' | sed 's/"windsurfVersion":"\(.*\)"/\1/')
-          
-          # Validate the output
-          if [ -z "$WINDSURF_URL" ]; then
-            echo "Error: Failed to extract URL from version info"
-            echo "Raw JSON content:"
-            echo "$VERSION_INFO"
-            exit 1
-          fi
-          
-          if [ -z "$WINDSURF_VERSION" ]; then
-            echo "Error: Failed to extract version from version info"
-            echo "Raw JSON content:"
-            echo "$VERSION_INFO"
-            exit 1
-          fi
-          
-          # Export variables
-          echo "WINDSURF_URL=${WINDSURF_URL}" >> $GITHUB_ENV
-          echo "WINDSURF_VERSION=${WINDSURF_VERSION}" >> $GITHUB_ENV
-          
-          # Debug output
-          echo "Latest Windsurf version: ${WINDSURF_VERSION}"
-          echo "Windsurf download URL: ${WINDSURF_URL}"
-
       - name: Docker Login
         uses: docker/login-action@v3
         with:
@@ -103,30 +70,12 @@ jobs:
             echo "Manual trigger - skipping version check"
             echo "UBUNTU_EXISTS=false" >> $GITHUB_ENV
           else
-            # Check if both antigravity version and windsurf version images exist
-            ANTIGRAVITY_IMAGE_EXISTS=false
-            WINDSURF_IMAGE_EXISTS=false
-            
-            if docker manifest inspect ${{ env.IMAGE_NAME }}:antigravity-v${ANTIGRAVITY_VERSION} > /dev/null 2>&1; then
-              echo "Ubuntu image for Antigravity version ${ANTIGRAVITY_VERSION} already exists"
-              ANTIGRAVITY_IMAGE_EXISTS=true
-            else
-              echo "Ubuntu image for Antigravity version ${ANTIGRAVITY_VERSION} does not exist"
-            fi
-            
-            if docker manifest inspect ${{ env.IMAGE_NAME }}:ubuntu-v${WINDSURF_VERSION} > /dev/null 2>&1; then
-              echo "Ubuntu image for Windsurf version ${WINDSURF_VERSION} already exists"
-              WINDSURF_IMAGE_EXISTS=true
-            else
-              echo "Ubuntu image for Windsurf version ${WINDSURF_VERSION} does not exist"
-            fi
-            
-            # Only skip build if both images exist
-            if [ "$ANTIGRAVITY_IMAGE_EXISTS" = "true" ] && [ "$WINDSURF_IMAGE_EXISTS" = "true" ]; then
-              echo "Both Antigravity and Windsurf version images exist, skipping build"
+            # Check if the dated version already exists
+            if docker manifest inspect ${{ env.IMAGE_NAME }}:v${ANTIGRAVITY_VERSION} > /dev/null 2>&1; then
+              echo "Ubuntu image for version ${ANTIGRAVITY_VERSION} already exists"
               echo "UBUNTU_EXISTS=true" >> $GITHUB_ENV
             else
-              echo "At least one of the required images does not exist, will build"
+              echo "Ubuntu image for version ${ANTIGRAVITY_VERSION} does not exist"
               echo "UBUNTU_EXISTS=false" >> $GITHUB_ENV
             fi
           fi
@@ -134,22 +83,29 @@ jobs:
       - name: Set up Docker Buildx for Ubuntu image
         uses: docker/setup-buildx-action@v3
 
+      - name: Prepare Docker tags
+        id: prepare_tags
+        run: |
+          # Base tags for Docker Hub
+          TAGS="${{ env.IMAGE_NAME }}:v${{ env.ANTIGRAVITY_VERSION }}"
+          TAGS="$TAGS,${{ env.IMAGE_NAME }}:latest"
+          
+          # Add additional registry tags if configured
+          if [ -n "${{ env.ADDITIONAL_REGISTRY_URL }}" ] && [ -n "${{ env.ADDITIONAL_IMAGE_NAME }}" ]; then
+            TAGS="$TAGS,${{ env.ADDITIONAL_REGISTRY_URL }}/${{ env.ADDITIONAL_IMAGE_NAME }}:v${{ env.ANTIGRAVITY_VERSION }}"
+            TAGS="$TAGS,${{ env.ADDITIONAL_REGISTRY_URL }}/${{ env.ADDITIONAL_IMAGE_NAME }}:latest"
+          fi
+          
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Docker tags: $TAGS"
+
       - name: Build and push Ubuntu Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
           push: true
-          build-args: |
-            WINDSURF_URL=${{ env.WINDSURF_URL }}
-            WINDSURF_VERSION=${{ env.WINDSURF_VERSION }}
-          tags: |
-            ${{ env.IMAGE_NAME }}:antigravity-v${{ env.ANTIGRAVITY_VERSION }}
-            ${{ env.IMAGE_NAME }}:windsurf-v${{ env.WINDSURF_VERSION }}
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:antigravity-v{2}', env.ADDITIONAL_REGISTRY_URL, env.ADDITIONAL_IMAGE_NAME, env.ANTIGRAVITY_VERSION) || '' }}
-            ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:windsurf-v{2}', env.ADDITIONAL_REGISTRY_URL, env.ADDITIONAL_IMAGE_NAME, env.WINDSURF_VERSION) || '' }}
-            ${{ env.ADDITIONAL_REGISTRY_URL != '' && env.ADDITIONAL_IMAGE_NAME != '' && format('{0}/{1}:latest', env.ADDITIONAL_REGISTRY_URL, env.ADDITIONAL_IMAGE_NAME) || '' }}
+          tags: ${{ steps.prepare_tags.outputs.tags }}
 
       - name: Log out from Docker Hub
         if: always()
