@@ -76,11 +76,11 @@ setup_transparent_proxy() {
     # ==========================================
     if [[ "$PROXY_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         echo ">> Setting DNS to host gateway $PROXY_IP (with 1.1.1.1 fallback)..."
-        echo -e "nameserver $PROXY_IP\nnameserver 1.1.1.1" > /etc/resolv.conf
+        echo -e "nameserver $PROXY_IP\nnameserver 1.1.1.1\noptions use-vc" > /etc/resolv.conf
     else
         PROXY_IP=""  # Ensure invalid/missing IP is empty
         echo ">> Setting DNS to 1.1.1.1 and 8.8.8.8..."
-        echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
+        echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions use-vc" > /etc/resolv.conf
     fi
     echo "   - resolv.conf updated"
 
