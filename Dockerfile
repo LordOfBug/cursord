@@ -4,20 +4,6 @@ FROM ubuntu:22.04
 # Set non-interactive mode for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Upgrade to newer glibc for compatibility with modern applications
-# Ubuntu 22.04 ships with glibc 2.35, we'll upgrade to 2.38 from Ubuntu 24.04 repos
-RUN echo "deb http://archive.ubuntu.com/ubuntu noble main restricted" > /etc/apt/sources.list.d/noble-glibc.list && \
-    echo "deb http://archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list.d/noble-glibc.list && \
-    apt-get update && \
-    apt-get install -y --allow-downgrades \
-    libc6=2.39-* \
-    libc-bin=2.39-* \
-    locales=2.39-* \
-    && rm /etc/apt/sources.list.d/noble-glibc.list \
-    && apt-get update \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install essential dependencies
 RUN apt-get update && apt-get install -y \
     # Essential build tools and utilities
@@ -204,6 +190,28 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "[program:xrdp-sesman]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
+
+# ============================================================================
+# Upgrade glibc to 2.39 for modern application compatibility
+# ============================================================================
+# This is done AFTER all Ubuntu 22.04 packages are installed to avoid conflicts
+# Ubuntu 22.04 ships with glibc 2.35, we upgrade to 2.39 from Ubuntu 24.04 (Noble)
+# This allows running applications that require newer glibc (like some Electron apps)
+RUN echo "Upgrading glibc to 2.39 for modern app compatibility..." && \
+    echo "deb http://archive.ubuntu.com/ubuntu noble main restricted" > /etc/apt/sources.list.d/noble-glibc.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list.d/noble-glibc.list && \
+    apt-get update && \
+    apt-get install -y --allow-downgrades \
+    libc6 \
+    libc-bin \
+    locales \
+    && rm /etc/apt/sources.list.d/noble-glibc.list \
+    && apt-get update \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* && \
+    echo "glibc upgrade completed" && \
+    ldd --version | head -1
+# ============================================================================
 
 # Install Antigravity using apt repository
 RUN echo "Installing Antigravity from official apt repository..." && \
