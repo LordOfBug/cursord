@@ -192,25 +192,30 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
 # ============================================================================
-# Upgrade glibc to 2.39 for modern application compatibility
+# Upgrade glibc and GLib for modern application compatibility
 # ============================================================================
 # This is done AFTER all Ubuntu 22.04 packages are installed to avoid conflicts
-# Ubuntu 22.04 ships with glibc 2.35, we upgrade to 2.39 from Ubuntu 24.04 (Noble)
-# This allows running applications that require newer glibc (like some Electron apps)
-RUN echo "Upgrading glibc to 2.39 for modern app compatibility..." && \
-    echo "deb http://archive.ubuntu.com/ubuntu noble main restricted" > /etc/apt/sources.list.d/noble-glibc.list && \
-    echo "deb http://archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list.d/noble-glibc.list && \
+# Ubuntu 22.04 ships with glibc 2.35 and GLib 2.72
+# We upgrade to glibc 2.39 and GLib 2.80 from Ubuntu 24.04 (Noble)
+# This allows running applications that require newer libraries (like ProxyBridge, Electron apps)
+RUN echo "Upgrading glibc and GLib for modern app compatibility..." && \
+    echo "deb http://archive.ubuntu.com/ubuntu noble main restricted" > /etc/apt/sources.list.d/noble-libs.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list.d/noble-libs.list && \
     apt-get update && \
     apt-get install -y --allow-downgrades \
     libc6 \
     libc-bin \
     locales \
-    && rm /etc/apt/sources.list.d/noble-glibc.list \
+    libglib2.0-0 \
+    libglib2.0-bin \
+    libglib2.0-data \
+    && rm /etc/apt/sources.list.d/noble-libs.list \
     && apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* && \
-    echo "glibc upgrade completed" && \
-    ldd --version | head -1
+    echo "Library upgrade completed:" && \
+    ldd --version | head -1 && \
+    pkg-config --modversion glib-2.0 || echo "GLib upgraded"
 # ============================================================================
 
 # Install Antigravity using apt repository
