@@ -192,30 +192,25 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
 # ============================================================================
-# Upgrade glibc and GLib for modern application compatibility
+# Upgrade glibc to 2.39 for modern application compatibility
 # ============================================================================
 # This is done AFTER all Ubuntu 22.04 packages are installed to avoid conflicts
-# Ubuntu 22.04 ships with glibc 2.35 and GLib 2.72
-# We upgrade to glibc 2.39 and GLib 2.80 from Ubuntu 24.04 (Noble)
-# This allows running applications that require newer libraries (like ProxyBridge, Electron apps)
-RUN echo "Upgrading glibc and GLib for modern app compatibility..." && \
-    echo "deb http://archive.ubuntu.com/ubuntu noble main restricted" > /etc/apt/sources.list.d/noble-libs.list && \
-    echo "deb http://archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list.d/noble-libs.list && \
+# Ubuntu 22.04 ships with glibc 2.35, we upgrade to 2.39 from Ubuntu 24.04 (Noble)
+# This allows running applications that require newer glibc (like some Electron apps)
+RUN echo "Upgrading glibc to 2.39 for modern app compatibility..." && \
+    echo "deb http://archive.ubuntu.com/ubuntu noble main restricted" > /etc/apt/sources.list.d/noble-glibc.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list.d/noble-glibc.list && \
     apt-get update && \
     apt-get install -y --allow-downgrades \
     libc6 \
     libc-bin \
     locales \
-    libglib2.0-0 \
-    libglib2.0-bin \
-    libglib2.0-data \
-    && rm /etc/apt/sources.list.d/noble-libs.list \
+    && rm /etc/apt/sources.list.d/noble-glibc.list \
     && apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* && \
-    echo "Library upgrade completed:" && \
-    ldd --version | head -1 && \
-    pkg-config --modversion glib-2.0 || echo "GLib upgraded"
+    echo "glibc upgrade completed" && \
+    ldd --version | head -1
 # ============================================================================
 
 # Install Antigravity using apt repository
@@ -317,15 +312,18 @@ RUN chmod 755 /usr/local/bin/ProxyBridge && \
 
 # Create ProxyBridge startup script for desktop app
 RUN echo '#!/bin/bash' > /bin/proxybridge-gui.sh && \
-    echo '# ProxyBridge GUI launcher' >> /bin/proxybridge-gui.sh && \
+    echo '# ProxyBridge GUI launcher with Ubuntu 22.04 compatibility fix' >> /bin/proxybridge-gui.sh && \
     echo 'export LANG=en_US.UTF-8' >> /bin/proxybridge-gui.sh && \
     echo 'export LC_ALL=en_US.UTF-8' >> /bin/proxybridge-gui.sh && \
     echo '' >> /bin/proxybridge-gui.sh && \
     echo '# Check if running as root' >> /bin/proxybridge-gui.sh && \
     echo 'if [ "$EUID" -ne 0 ]; then' >> /bin/proxybridge-gui.sh && \
-    echo '    exec pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY /usr/local/bin/ProxyBridgeGUI "$@"' >> /bin/proxybridge-gui.sh && \
+    echo '    # ProxyBridgeGUI has GLib compatibility issues on Ubuntu 22.04' >> /bin/proxybridge-gui.sh && \
+    echo '    # Launch ProxyBridge CLI in a terminal instead' >> /bin/proxybridge-gui.sh && \
+    echo '    exec pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY xfce4-terminal --maximize --title="ProxyBridge" -e "sudo /usr/local/bin/ProxyBridge"' >> /bin/proxybridge-gui.sh && \
     echo 'else' >> /bin/proxybridge-gui.sh && \
-    echo '    exec /usr/local/bin/ProxyBridgeGUI "$@"' >> /bin/proxybridge-gui.sh && \
+    echo '    # Already root, try GUI first, fallback to terminal if it fails' >> /bin/proxybridge-gui.sh && \
+    echo '    /usr/local/bin/ProxyBridgeGUI "$@" 2>/dev/null || xfce4-terminal --maximize --title="ProxyBridge" -e "/usr/local/bin/ProxyBridge"' >> /bin/proxybridge-gui.sh && \
     echo 'fi' >> /bin/proxybridge-gui.sh && \
     chmod +x /bin/proxybridge-gui.sh && \
     chown coder:coder /bin/proxybridge-gui.sh
