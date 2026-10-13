@@ -4,6 +4,20 @@ FROM ubuntu:22.04
 # Set non-interactive mode for apt
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Upgrade to newer glibc for compatibility with modern applications
+# Ubuntu 22.04 ships with glibc 2.35, we'll upgrade to 2.38 from Ubuntu 24.04 repos
+RUN echo "deb http://archive.ubuntu.com/ubuntu noble main restricted" > /etc/apt/sources.list.d/noble-glibc.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list.d/noble-glibc.list && \
+    apt-get update && \
+    apt-get install -y --allow-downgrades \
+    libc6=2.39-* \
+    libc-bin=2.39-* \
+    locales=2.39-* \
+    && rm /etc/apt/sources.list.d/noble-glibc.list \
+    && apt-get update \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install essential dependencies
 RUN apt-get update && apt-get install -y \
     # Essential build tools and utilities
@@ -262,95 +276,66 @@ RUN chmod +x /bin/upgrade-kiro.sh && \
 # ============================================================================
 
 # ============================================================================
-# OpenCode Installation
+# ProxyBridge Installation
 # ============================================================================
-# OpenCode is an open source AI coding agent built for the terminal and desktop.
-# It provides AI-powered coding assistance with support for multiple AI providers.
-# Installation using the official .deb package from GitHub releases
+# ProxyBridge is a transparent proxy tool for Linux that can redirect traffic
+# based on application rules using iptables and NFQUEUE.
+# Install dependencies for ProxyBridge
+RUN apt-get update && apt-get install -y \
+    libnetfilter-queue1 \
+    libnfnetlink0 \
+    libgtk-3-0 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy OpenCode installation script
-COPY opencode-ubuntu.sh /tmp/opencode-ubuntu.sh
-RUN chmod +x /tmp/opencode-ubuntu.sh
+# Copy ProxyBridge files
+COPY proxyBridge/ProxyBridge /usr/local/bin/ProxyBridge
+COPY proxyBridge/ProxyBridgeGUI /usr/local/bin/ProxyBridgeGUI
+COPY proxyBridge/libproxybridge.so /usr/local/lib/libproxybridge.so
 
-# Run installation script
-RUN /tmp/opencode-ubuntu.sh && \
-    rm -f /tmp/opencode-ubuntu.sh
+# Set permissions and update library cache
+RUN chmod 755 /usr/local/bin/ProxyBridge && \
+    chmod 755 /usr/local/bin/ProxyBridgeGUI && \
+    chmod 755 /usr/local/lib/libproxybridge.so && \
+    mkdir -p /etc/proxybridge && \
+    chmod 755 /etc/proxybridge && \
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/proxybridge.conf && \
+    ldconfig
 
-# Verify OpenCode installation
-RUN which opencode || echo "OpenCode installed successfully"
+# Create ProxyBridge startup script for desktop app
+RUN echo '#!/bin/bash' > /bin/proxybridge-gui.sh && \
+    echo '# ProxyBridge GUI launcher' >> /bin/proxybridge-gui.sh && \
+    echo 'export LANG=en_US.UTF-8' >> /bin/proxybridge-gui.sh && \
+    echo 'export LC_ALL=en_US.UTF-8' >> /bin/proxybridge-gui.sh && \
+    echo '' >> /bin/proxybridge-gui.sh && \
+    echo '# Check if running as root' >> /bin/proxybridge-gui.sh && \
+    echo 'if [ "$EUID" -ne 0 ]; then' >> /bin/proxybridge-gui.sh && \
+    echo '    exec pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY /usr/local/bin/ProxyBridgeGUI "$@"' >> /bin/proxybridge-gui.sh && \
+    echo 'else' >> /bin/proxybridge-gui.sh && \
+    echo '    exec /usr/local/bin/ProxyBridgeGUI "$@"' >> /bin/proxybridge-gui.sh && \
+    echo 'fi' >> /bin/proxybridge-gui.sh && \
+    chmod +x /bin/proxybridge-gui.sh && \
+    chown coder:coder /bin/proxybridge-gui.sh
 
-# Create OpenCode startup script for desktop app
-RUN echo '#!/bin/bash' > /bin/opencode.sh && \
-    echo '# Set environment variables for proper rendering' >> /bin/opencode.sh && \
-    echo 'export LANG=en_US.UTF-8' >> /bin/opencode.sh && \
-    echo 'export LC_ALL=en_US.UTF-8' >> /bin/opencode.sh && \
-    echo 'export FONTCONFIG_PATH=/etc/fonts' >> /bin/opencode.sh && \
-    echo '' >> /bin/opencode.sh && \
-    echo '# Try to find and launch OpenCode desktop app' >> /bin/opencode.sh && \
-    echo 'if [ -f "/opt/OpenCode/ai.opencode.desktop" ]; then' >> /bin/opencode.sh && \
-    echo '    exec /opt/OpenCode/ai.opencode.desktop --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
-    echo 'elif [ -f "/opt/OpenCode/opencode" ]; then' >> /bin/opencode.sh && \
-    echo '    exec /opt/OpenCode/opencode --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
-    echo 'elif [ -f "/usr/bin/opencode-desktop" ]; then' >> /bin/opencode.sh && \
-    echo '    exec /usr/bin/opencode-desktop --no-sandbox --disable-dev-shm-usage "$@"' >> /bin/opencode.sh && \
-    echo 'else' >> /bin/opencode.sh && \
-    echo '    # Fallback to terminal version' >> /bin/opencode.sh && \
-    echo '    exec xfce4-terminal -e opencode' >> /bin/opencode.sh && \
-    echo 'fi' >> /bin/opencode.sh && \
-    chmod +x /bin/opencode.sh && \
-    chown coder:coder /bin/opencode.sh
-
-# Create desktop shortcut for OpenCode
+# Create desktop shortcut for ProxyBridge GUI
 RUN mkdir -p /home/coder/Desktop && \
-    echo "[Desktop Entry]" > /home/coder/Desktop/opencode.desktop && \
-    echo "Name=OpenCode" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Comment=Open source AI coding agent" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Exec=/bin/opencode.sh" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Icon=ai.opencode.desktop" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Terminal=false" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Type=Application" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Categories=Development;IDE;" >> /home/coder/Desktop/opencode.desktop && \
-    echo "StartupNotify=true" >> /home/coder/Desktop/opencode.desktop && \
-    echo "Keywords=code;development;ai;coding;agent;" >> /home/coder/Desktop/opencode.desktop && \
-    chmod +x /home/coder/Desktop/opencode.desktop && \
-    chown -R coder:coder /home/coder/Desktop
+    echo "[Desktop Entry]" > /home/coder/Desktop/proxybridge.desktop && \
+    echo "Name=ProxyBridge" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "Comment=Transparent proxy tool with application-level rules" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "Exec=/bin/proxybridge-gui.sh" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "Icon=network-proxy" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "Terminal=false" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "Type=Application" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "Categories=Network;System;Settings;" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "StartupNotify=true" >> /home/coder/Desktop/proxybridge.desktop && \
+    echo "Keywords=proxy;network;transparent;iptables;" >> /home/coder/Desktop/proxybridge.desktop && \
+    chmod +x /home/coder/Desktop/proxybridge.desktop && \
+    chown -R coder:coder /home/coder/Desktop/proxybridge.desktop
 
-# Copy and setup upgrade script
-COPY upgrade-opencode.sh /bin/upgrade-opencode.sh
-RUN chmod +x /bin/upgrade-opencode.sh && \
-    chown coder:coder /bin/upgrade-opencode.sh
+# Verify ProxyBridge installation
+RUN ldd /usr/local/bin/ProxyBridge && \
+    /usr/local/bin/ProxyBridge --help || echo "ProxyBridge installed (requires root to run)"
 # ============================================================================
-
-# Install Visual Studio Code
-RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list && \
-    apt update && \
-    apt install -y code && \
-    apt clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create VSCode startup script
-RUN echo '#!/bin/bash' > /bin/code.sh && \
-    echo '# Set environment variables for Chinese text rendering' >> /bin/code.sh && \
-    echo 'export LANG=en_US.UTF-8' >> /bin/code.sh && \
-    echo 'export LC_ALL=en_US.UTF-8' >> /bin/code.sh && \
-    echo 'export FONTCONFIG_PATH=/etc/fonts' >> /bin/code.sh && \
-    echo 'exec /usr/bin/code --no-sandbox --disable-dev-shm-usage --unity-launch "$@"' >> /bin/code.sh && \
-    chmod +x /bin/code.sh && \
-    chown coder:coder /bin/code.sh
-
-# Create desktop shortcut for VSCode
-RUN echo "[Desktop Entry]" > /home/coder/Desktop/vscode.desktop && \
-    echo "Name=Visual Studio Code" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Comment=Code Editing. Redefined." >> /home/coder/Desktop/vscode.desktop && \
-    echo "Exec=/bin/code.sh" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Icon=/usr/share/code/resources/app/resources/linux/code.png" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Terminal=false" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Type=Application" >> /home/coder/Desktop/vscode.desktop && \
-    echo "Categories=Development;TextEditor;" >> /home/coder/Desktop/vscode.desktop && \
-    echo "StartupNotify=true" >> /home/coder/Desktop/vscode.desktop && \
-    chmod +x /home/coder/Desktop/vscode.desktop && \
-    chown -R coder:coder /home/coder/Desktop
 
 # Delete the existing machine-id file. Init system will generate new ones
 RUN rm -f /etc/machine-id
