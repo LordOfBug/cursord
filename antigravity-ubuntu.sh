@@ -16,6 +16,9 @@ export NO_AT_BRIDGE=1
 # Bypass TLS certificate expiration errors for Node.js / Language Server HTTP2 session
 export NODE_TLS_REJECT_UNAUTHORIZED=0
 
+# Ensure ~/.gemini/bin is in PATH for the agy backend binary
+export PATH="$HOME/.gemini/bin:/usr/local/bin:$PATH"
+
 # Detect proxy settings if configured
 PROXY_FLAGS=()
 if [ -n "$ALL_PROXY" ]; then

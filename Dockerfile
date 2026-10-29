@@ -194,17 +194,24 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
 
-# Install Antigravity using apt repository
-RUN echo "Installing Antigravity from official apt repository..." && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg | \
-      gpg --dearmor -o /etc/apt/keyrings/antigravity-repo-key.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main" | \
-      tee /etc/apt/sources.list.d/antigravity.list > /dev/null && \
-    apt-get update && \
-    apt-get install -y antigravity && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Install latest Antigravity IDE from official Linux release archive and agy CLI backend
+RUN echo "Installing latest Antigravity IDE from official release archive..." && \
+    RELEASE_JSON=$(curl -fsSL "https://antigravity-ide-auto-updater-974169037036.us-central1.run.app/releases") && \
+    VERSION=$(echo "$RELEASE_JSON" | jq -r '.[0].version') && \
+    EXEC_ID=$(echo "$RELEASE_JSON" | jq -r '.[0].execution_id') && \
+    DOWNLOAD_URL="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/${VERSION}-${EXEC_ID}/linux-x64/Antigravity%20IDE.tar.gz" && \
+    echo "Downloading Antigravity IDE ${VERSION} (${EXEC_ID})..." && \
+    curl -fsSL "$DOWNLOAD_URL" -o /tmp/antigravity-ide.tar.gz && \
+    mkdir -p /usr/share/antigravity && \
+    tar -xzf /tmp/antigravity-ide.tar.gz -C /usr/share/antigravity --strip-components=1 && \
+    rm -f /tmp/antigravity-ide.tar.gz && \
+    ln -sf /usr/share/antigravity/bin/antigravity-ide /usr/share/antigravity/bin/antigravity && \
+    ln -sf /usr/share/antigravity/antigravity-ide /usr/share/antigravity/antigravity && \
+    ln -sf /usr/share/antigravity/bin/antigravity-ide /usr/bin/antigravity && \
+    ln -sf /usr/share/antigravity/bin/antigravity-ide /usr/bin/antigravity-ide && \
+    cp -f /usr/share/antigravity/resources/app/resources/linux/code.png /usr/share/pixmaps/antigravity.png && \
+    su - coder -c "curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --dir /home/coder/.gemini/bin" && \
+    ln -sf /home/coder/.gemini/bin/agy /usr/local/bin/agy
 
 # Copy Antigravity startup script
 COPY antigravity-ubuntu.sh /bin/antigravity.sh
@@ -216,6 +223,7 @@ RUN mkdir -p /home/coder/Desktop && \
     echo "[Desktop Entry]" > /home/coder/Desktop/antigravity.desktop && \
     echo "Name=Antigravity" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Exec=/bin/antigravity.sh" >> /home/coder/Desktop/antigravity.desktop && \
+    echo "Path=/home/coder" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Icon=antigravity" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Terminal=false" >> /home/coder/Desktop/antigravity.desktop && \
     echo "Type=Application" >> /home/coder/Desktop/antigravity.desktop && \
