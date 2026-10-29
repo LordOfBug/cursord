@@ -108,7 +108,9 @@ RUN apt-get update && apt-get install -y \
     # Locale support for Chinese
     locales \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && (sed -i 's/^socks4/#socks4/' /etc/proxychains4.conf 2>/dev/null || true)
+
 
 # Configure Chinese locale support
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \

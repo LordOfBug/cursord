@@ -1,11 +1,12 @@
 #!/bin/bash
 # Proxy Setup Script
-# Replaces redsocks with lightweight, userspace proxychains-ng and environment proxying.
+# Replaces redsocks with lightweight, userspace proxychains-ng.
 # Requires NO special capabilities (no NET_ADMIN, no iptables, no DNS hijacking).
 #
 # Supported configuration methods:
 # 1. Mount config: -v /path/to/proxychains.conf:/etc/proxychains4.conf:ro
 # 2. Environment variable: -e PROXY_URL=socks5://192.168.1.50:1080 (or http://...)
+# 3. Direct mode (default): No configuration needed; everything connects directly.
 
 PROXYCHAINS_CONF="/etc/proxychains4.conf"
 PROXYCHAINS_ALT_CONF="/etc/proxychains.conf"
@@ -20,6 +21,16 @@ cat > /etc/profile.d/proxychains-alias.sh << 'EOF'
 alias pc="proxychains4 -q"
 EOF
 chmod +x /etc/profile.d/proxychains-alias.sh
+
+# Also ensure alias is present in bash.bashrc for non-login interactive shells
+if [ -f /etc/bash.bashrc ] && ! grep -q 'alias pc=' /etc/bash.bashrc; then
+    echo "alias pc='proxychains4 -q'" >> /etc/bash.bashrc
+fi
+
+# Ensure default Tor placeholder from Debian/Ubuntu package is disabled if present
+if [ -f "$PROXYCHAINS_CONF" ]; then
+    sed -i 's/^[[:space:]]*socks4[[:space:]]\+127\.0\.0\.1[[:space:]]\+9050/# socks4 127.0.0.1 9050/' "$PROXYCHAINS_CONF" 2>/dev/null || true
+fi
 
 # Check if an alternative config was mounted at /etc/proxychains.conf
 if [ -f "$PROXYCHAINS_ALT_CONF" ] && [ ! -L "$PROXYCHAINS_CONF" ] && [ "$PROXYCHAINS_ALT_CONF" != "$PROXYCHAINS_CONF" ]; then
@@ -60,27 +71,32 @@ $PROTO $HOST $PORT $USER $PASS
 EOF
 fi
 
-# If proxychains configuration is active, export standard proxy environment variables
-if [ -f "$PROXYCHAINS_CONF" ] && grep -v '^#' "$PROXYCHAINS_CONF" | grep -q '[a-z]'; then
-    # Extract the last active proxy from [ProxyList]
-    LAST_LINE=$(grep -v '^#' "$PROXYCHAINS_CONF" | grep -v '^\[' | grep -E '(socks4|socks5|http)' | tail -1)
-    if [ -n "$LAST_LINE" ]; then
-        TYPE=$(echo "$LAST_LINE" | awk '{print $1}')
-        IP=$(echo "$LAST_LINE" | awk '{print $2}')
-        PORT=$(echo "$LAST_LINE" | awk '{print $3}')
-        USER=$(echo "$LAST_LINE" | awk '{print $4}')
-        PASS=$(echo "$LAST_LINE" | awk '{print $5}')
+# Check if a valid, non-placeholder proxy is configured in proxychains
+ACTIVE_PROXY_LINE=""
+if [ -f "$PROXYCHAINS_CONF" ]; then
+    ACTIVE_PROXY_LINE=$(grep -v '^[[:space:]]*#' "$PROXYCHAINS_CONF" | grep -v '^\[' | grep -E '^[[:space:]]*(socks4|socks5|http)' | grep -v '127\.0\.0\.1[[:space:]]\+9050' | tail -1)
+fi
 
-        if [ -n "$USER" ] && [ -n "$PASS" ]; then
-            PROXY_URI="${TYPE}://${USER}:${PASS}@${IP}:${PORT}"
-        else
-            PROXY_URI="${TYPE}://${IP}:${PORT}"
-        fi
+if [ -n "$ACTIVE_PROXY_LINE" ]; then
+    TYPE=$(echo "$ACTIVE_PROXY_LINE" | awk '{print $1}')
+    IP=$(echo "$ACTIVE_PROXY_LINE" | awk '{print $2}')
+    PORT=$(echo "$ACTIVE_PROXY_LINE" | awk '{print $3}')
+    USER=$(echo "$ACTIVE_PROXY_LINE" | awk '{print $4}')
+    PASS=$(echo "$ACTIVE_PROXY_LINE" | awk '{print $5}')
 
-        echo ">> Proxy configured: $PROXY_URI"
-        echo "   - Userspace proxy tool: proxychains4 / pc <command>"
+    if [ -n "$USER" ] && [ -n "$PASS" ]; then
+        PROXY_URI="${TYPE}://${USER}:${PASS}@${IP}:${PORT}"
+    else
+        PROXY_URI="${TYPE}://${IP}:${PORT}"
+    fi
 
-        # Set system-wide environment variables for apps, CLI tools, and IDEs
+    echo ">> ProxyChains active: $PROXY_URI"
+    echo "   - Run any command through proxy using: pc <command> (e.g. pc git clone ...)"
+
+    # Only export global HTTP_PROXY/HTTPS_PROXY if explicitly requested via environment variable.
+    # This preserves fine-grained control so browsers and system tools run directly by default.
+    if [ -n "$PROXY_URL" ] || [ -n "$PROXY_SERVER" ] || [ "$EXPORT_PROXY_ENV" = "true" ]; then
+        echo "   - Global environment proxy enabled (EXPORT_PROXY_ENV=true)"
         cat > /etc/profile.d/proxy-env.sh << EOF
 export http_proxy="$PROXY_URI"
 export https_proxy="$PROXY_URI"
@@ -92,27 +108,10 @@ export no_proxy="localhost,127.0.0.1,::1,*.local"
 export NO_PROXY="localhost,127.0.0.1,::1,*.local"
 EOF
         chmod +x /etc/profile.d/proxy-env.sh
-
-        # Also write to /etc/environment for non-interactive sessions
-        echo "http_proxy=\"$PROXY_URI\"" >> /etc/environment
-        echo "https_proxy=\"$PROXY_URI\"" >> /etc/environment
-        echo "all_proxy=\"$PROXY_URI\"" >> /etc/environment
-        echo "HTTP_PROXY=\"$PROXY_URI\"" >> /etc/environment
-        echo "HTTPS_PROXY=\"$PROXY_URI\"" >> /etc/environment
-        echo "ALL_PROXY=\"$PROXY_URI\"" >> /etc/environment
-        echo "no_proxy=\"localhost,127.0.0.1,::1,*.local\"" >> /etc/environment
-        echo "NO_PROXY=\"localhost,127.0.0.1,::1,*.local\"" >> /etc/environment
-        
-        # Export for current entrypoint session
-        export http_proxy="$PROXY_URI"
-        export https_proxy="$PROXY_URI"
-        export all_proxy="$PROXY_URI"
-        export HTTP_PROXY="$PROXY_URI"
-        export HTTPS_PROXY="$PROXY_URI"
-        export ALL_PROXY="$PROXY_URI"
-        export no_proxy="localhost,127.0.0.1,::1,*.local"
-        export NO_PROXY="localhost,127.0.0.1,::1,*.local"
     fi
 else
-    echo ">> Proxy mode: Direct (no proxy configuration provided)"
+    # Clean up any stale environment proxy files from previous runs
+    rm -f /etc/profile.d/proxy-env.sh
+    sed -i '/PROXY/Id' /etc/environment 2>/dev/null || true
+    echo ">> Proxy mode: Direct (no proxy configured, all connections direct)"
 fi
