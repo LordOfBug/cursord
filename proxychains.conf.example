@@ -1,0 +1,22 @@
+# proxychains.conf - Configuration for proxychains-ng (proxychains4)
+#
+# Proxy routing mode:
+# - strict_chain: Proxies are chained in order; all must be online.
+# - dynamic_chain: Dead proxies are skipped.
+# - random_chain: Random proxy chosen from the list.
+strict_chain
+
+# Resolve DNS queries through the proxy (prevents DNS poisoning and leaks)
+proxy_dns
+
+# Connection timeouts in milliseconds
+tcp_read_time_out 15000
+tcp_connect_time_out 8000
+
+# Proxy list format:
+#   type  ip  port  [user  password]
+# Supported types: socks4, socks5, http
+#
+[ProxyList]
+# Change this to your actual proxy server:
+socks5 192.168.1.50 1080

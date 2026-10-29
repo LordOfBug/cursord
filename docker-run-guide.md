@@ -10,8 +10,8 @@ docker run -d \
   --shm-size=2g \
   --memory=8g \
   --cpus=4 \
-  --tmpfs /tmp:rw,noexec,nosuid,size=1g \
-  --tmpfs /var/tmp:rw,noexec,nosuid,size=512m \
+  --tmpfs /tmp:rw,exec,nosuid,size=2g \
+  --tmpfs /var/tmp:rw,exec,nosuid,size=512m \
   -v /dev/shm:/dev/shm \
   -p 3389:3389 \
   -e DISPLAY=:0 \
@@ -22,13 +22,14 @@ docker run -d \
 
 ## Parameter Explanations
 
-- `--shm-size=2g`: Critical for Electron apps - prevents crashes during file operations
+- `--shm-size=2g`: Critical for Electron apps - prevents crashes during file operations and rendering
 - `--memory=8g`: Adequate memory for IDE operations
 - `--cpus=4`: Sufficient CPU allocation
-- `--tmpfs /tmp`: Fast temporary file operations
+- `--tmpfs /tmp`: Fast temporary file operations (must have `exec` permission for agent/native binaries)
 - `-v /dev/shm:/dev/shm`: Shared memory access
-- `--security-opt seccomp=unconfined`: Allows necessary system calls
+- `--security-opt seccomp=unconfined`: Allows necessary system calls (e.g. clone3 with glibc >= 2.38)
 - `--cap-add SYS_ADMIN`: Required for some GUI operations
+
 
 ## Alternative Minimal Run Command
 
@@ -62,78 +63,72 @@ docker stats antigravity-ide
 docker exec antigravity-ide df -h /dev/shm
 ```
 
-## Transparent Proxy Mode
+## Proxy Configuration (ProxyChains & Environment)
 
-The image supports transparent proxying - applications inside the container will be completely unaware of the proxy while all HTTP/HTTPS traffic is automatically routed through it.
+The image provides fine-grained, userspace proxying via **ProxyChains4** and standard environment proxies (`ALL_PROXY`, `HTTP_PROXY`, `HTTPS_PROXY`).
+Unlike redsocks, this operates completely in userspace and **does not require `--cap-add=NET_ADMIN`** or complex iptables NAT rules.
 
 ### How It Works
 
-- Mount a `redsocks.conf` file to `/etc/redsocks.conf`
-- If the file exists and is non-empty, transparent proxy is **enabled**
-- If the file doesn't exist, transparent proxy is **disabled** (normal mode)
+You can configure the proxy in two simple ways:
 
-### Running with Transparent Proxy
-
-**Step 1: Create a redsocks.conf file on your host:**
-
-```conf
-base {
-    log_debug = off;
-    log_info = on;
-    log = "syslog:daemon";
-    daemon = on;
-    redirector = iptables;
-}
-
-redsocks {
-    local_ip = 127.0.0.1;
-    local_port = 12345;
-    
-    // Your proxy server
-    ip = 192.168.1.50;
-    port = 8080;
-    
-    // Use 'http-connect' for HTTP proxies, 'socks5' for SOCKS5
-    type = http-connect;
-    
-    // Optional authentication (uncomment if needed)
-    // login = "username";
-    // password = "password";
-}
-```
-
-**Step 2: Run the container with the config mounted:**
+#### Option A: Mount a `proxychains.conf` file (Recommended)
+Mount your configuration to `/etc/proxychains4.conf`:
 
 ```bash
 docker run -d \
   --name antigravity-ide \
-  --cap-add=NET_ADMIN \
-  -v /path/to/redsocks.conf:/etc/redsocks.conf:ro \
   --shm-size=2g \
+  -v /path/to/proxychains.conf:/etc/proxychains4.conf:ro \
   -p 3389:3389 \
   your-image-name
 ```
 
-### Important Notes
+Sample `proxychains.conf`:
+```conf
+strict_chain
+proxy_dns
+tcp_read_time_out 15000
+tcp_connect_time_out 8000
 
-- **`--cap-add=NET_ADMIN` is required** when mounting the config. The container needs this capability to modify iptables rules.
-- The proxy intercepts traffic on ports 80 (HTTP) and 443 (HTTPS).
-- Local/private network traffic (10.x.x.x, 172.16.x.x, 192.168.x.x, etc.) is NOT proxied.
-- The proxy server IP is automatically excluded to prevent infinite loops.
+[ProxyList]
+socks5 192.168.1.50 1080
+# http  192.168.1.50 8080
+```
 
-### Verifying Proxy is Active
+#### Option B: Pass via `PROXY_URL` Environment Variable
+Pass your proxy URL directly when starting the container:
 
 ```bash
-# Check container logs for proxy status
-docker logs antigravity-ide | grep -i proxy
-
-
-# Verify iptables rules are applied
-docker exec antigravity-ide iptables -t nat -L REDSOCKS
-
-# Check redsocks is running
-docker exec antigravity-ide pgrep -x redsocks
+docker run -d \
+  --name antigravity-ide \
+  --shm-size=2g \
+  -e PROXY_URL="socks5://192.168.1.50:1080" \
+  -p 3389:3389 \
+  your-image-name
 ```
+
+### Using the Proxy Inside the Container
+
+1. **Terminal Tools (Fine-Grained Control):**
+   Run any command through the proxy using `proxychains4` or the short alias `pc`:
+   ```bash
+   pc git clone https://github.com/...
+   pc curl -I https://api.openai.com
+   pc npm install
+   ```
+
+2. **AI IDEs (Antigravity & Kiro):**
+   Antigravity and Kiro automatically detect the configured proxy on startup and apply native `--proxy-server` routing to AI models and extension marketplaces without any extra steps.
+
+3. **Verifying Proxy Status:**
+   ```bash
+   # Check proxy configuration in container logs
+   docker logs antigravity-ide | grep -i proxy
+
+   # Test connection in terminal
+   docker exec -it antigravity-ide pc curl ipinfo.io
+   ```
 
 ## Web Development Configuration
 
@@ -159,4 +154,3 @@ docker run -d \
   --add-host api.internal:192.168.1.50 \
   ...
 ```
-

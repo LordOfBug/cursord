@@ -8,8 +8,8 @@ echo "========================================"
 echo "  Container Startup"
 echo "========================================"
 
-# Setup transparent proxy if enabled
-source /usr/local/bin/transparent-proxy.sh
+# Setup proxy if enabled
+source /usr/local/bin/proxy-setup.sh
 
 echo ">> Starting supervisord..."
 

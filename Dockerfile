@@ -102,9 +102,9 @@ RUN apt-get update && apt-get install -y \
     telnet \
     mesa-utils \
     
-    # Transparent proxy support (redsocks + iptables)
+    # Proxy and network utilities (proxychains4)
     iptables \
-    redsocks \
+    proxychains4 \
     # Locale support for Chinese
     locales \
     && apt-get clean \
@@ -167,10 +167,11 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
 
 # Configure XRDP
 RUN adduser xrdp ssl-cert && \
-    echo "startxfce4" > /etc/skel/.xsession && \
-    sed -i 's/max_bpp=32/max_bpp=128/g' /etc/xrdp/xrdp.ini && \
-    sed -i 's/xserverbpp=24/xserverbpp=128/g' /etc/xrdp/xrdp.ini && \
-    echo "xfce4-session" > /root/.xsession
+    echo "exec dbus-run-session -- xfce4-session" > /etc/skel/.xsession && \
+    sed -i 's/max_bpp=32/max_bpp=24/g' /etc/xrdp/xrdp.ini && \
+    sed -i 's/xserverbpp=24/xserverbpp=24/g' /etc/xrdp/xrdp.ini && \
+    echo "exec dbus-run-session -- xfce4-session" > /root/.xsession
+
 
 # Create user
 RUN useradd -m -s /bin/bash coder && \
@@ -368,10 +369,10 @@ RUN echo "[program:ensure_machine_id]" >> /etc/supervisor/conf.d/supervisord.con
 # Expose XRDP port
 EXPOSE 3389
 
-# Copy transparent proxy scripts
-COPY transparent-proxy.sh /usr/local/bin/transparent-proxy.sh
+# Copy proxy setup scripts
+COPY proxy-setup.sh /usr/local/bin/proxy-setup.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/transparent-proxy.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/proxy-setup.sh /usr/local/bin/entrypoint.sh
 
 # Set entrypoint to our wrapper (which handles proxy setup then starts supervisord)
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
