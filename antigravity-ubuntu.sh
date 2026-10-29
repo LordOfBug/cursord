@@ -13,6 +13,9 @@ fi
 # Disable accessibility bus warnings
 export NO_AT_BRIDGE=1
 
+# Bypass TLS certificate expiration errors for Node.js / Language Server HTTP2 session
+export NODE_TLS_REJECT_UNAUTHORIZED=0
+
 # Detect proxy settings if configured
 PROXY_FLAGS=()
 if [ -n "$ALL_PROXY" ]; then
@@ -30,11 +33,11 @@ exec /usr/bin/antigravity \
     "${PROXY_FLAGS[@]}" \
     --no-sandbox \
     --disable-gpu \
+    --disable-gpu-compositing \
+    --use-gl=swiftshader \
     --password-store=basic \
     --disable-dev-shm-usage \
-    --disable-background-timer-throttling \
-    --disable-backgrounding-occluded-windows \
-    --disable-renderer-backgrounding \
+    --ignore-certificate-errors \
     --js-flags="--max-old-space-size=4096" \
     "$@"
 
