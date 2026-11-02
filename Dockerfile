@@ -206,13 +206,11 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
 COPY mihomo.config.yaml /etc/mihomo/config.yaml
 RUN echo "Installing Mihomo binary..." && \
     MIHOMO_URL="https://ghfast.top/https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-v1.19.33.gz" && \
-    curl -fsSL "$MIHOMO_URL" -o /tmp/mihomo.gz || \
-    curl -fsSL "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-v1.19.33.gz" -o /tmp/mihomo.gz && \
+    (curl -fsSL "$MIHOMO_URL" -o /tmp/mihomo.gz || \
+     curl -fsSL "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-v1.19.33.gz" -o /tmp/mihomo.gz) && \
     gzip -d -f /tmp/mihomo.gz && \
     mv /tmp/mihomo /usr/local/bin/mihomo && \
-    chmod +x /usr/local/bin/mihomo && \
-    setcap cap_net_admin,cap_net_bind_service=+ep /usr/local/bin/mihomo 2>/dev/null || true && \
-    /usr/local/bin/mihomo -t -d /etc/mihomo
+    chmod 755 /usr/local/bin/mihomo
 
 # Install latest Antigravity IDE from official Linux release archive and agy CLI backend
 RUN echo "Installing latest Antigravity IDE from official release archive..." && \
