@@ -17,6 +17,9 @@ docker run -d \
   -e DISPLAY=:0 \
   --security-opt seccomp=unconfined \
   --cap-add SYS_ADMIN \
+  --cap-add NET_ADMIN \
+  --device /dev/net/tun \
+  --add-host=host.docker.internal:host-gateway \
   your-image-name
 ```
 

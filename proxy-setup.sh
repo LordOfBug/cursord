@@ -11,6 +11,24 @@
 PROXYCHAINS_CONF="/etc/proxychains4.conf"
 PROXYCHAINS_ALT_CONF="/etc/proxychains.conf"
 
+# Check if Mihomo TUN mode is configured
+if [ -f "/etc/mihomo/config.yaml" ] && [ -x "/usr/local/bin/mihomo" ]; then
+    # If HOST_PROXY is passed (e.g. -e HOST_PROXY=192.168.1.50:7890 or socks5://...:7890), update config.yaml
+    if [ -n "$HOST_PROXY" ] || [ -n "$PROXY_SERVER" ]; then
+        PROXY_TARGET="${HOST_PROXY:-$PROXY_SERVER}"
+        PROXY_HOST=$(echo "$PROXY_TARGET" | sed -E 's|^[^:]+://||' | cut -d: -f1)
+        PROXY_PORT=$(echo "$PROXY_TARGET" | sed -E 's|^[^:]+://||' | cut -d: -f2 | tr -d '/')
+        if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
+            echo ">> Updating Mihomo upstream host proxy: $PROXY_HOST:$PROXY_PORT"
+            sed -i -E "s|server: host\.docker\.internal|server: $PROXY_HOST|g" /etc/mihomo/config.yaml 2>/dev/null || true
+            sed -i -E "s|port: 7890|port: $PROXY_PORT|g" /etc/mihomo/config.yaml 2>/dev/null || true
+        fi
+    fi
+    echo ">> Mihomo TUN transparent proxy active (/etc/mihomo/config.yaml)"
+    echo "   - Kiro: Proxied by default"
+    echo "   - Antigravity / Browsers / System: DIRECT by default"
+fi
+
 # Ensure proxychains symlink exists
 if [ -f "/usr/bin/proxychains4" ] && [ ! -f "/usr/bin/proxychains" ]; then
     ln -sf /usr/bin/proxychains4 /usr/bin/proxychains

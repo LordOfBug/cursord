@@ -1,0 +1,160 @@
+# ==============================================================================
+# Mihomo (Clash Meta) TUN Routing Configuration for Containerized Dev Box
+# ==============================================================================
+# This configuration runs Mihomo as a transparent Layer 3/4 TUN proxy inside
+# the container. It routes traffic based on the originating Linux process name
+# or binary path without requiring LD_PRELOAD, app wrapper scripts, or proxy env flags.
+
+mode: rule
+log-level: info
+ipv6: false
+
+# External controller / Web UI (accessible inside container or mapped port)
+external-controller: 127.0.0.1:9090
+secret: ""
+
+# ------------------------------------------------------------------------------
+# Built-in Fake-IP DNS Resolver
+# Intercepts DNS queries instantly, associates domain with process socket
+# ------------------------------------------------------------------------------
+dns:
+  enable: true
+  listen: 0.0.0.0:1053
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - "*.lan"
+    - "localhost.ptlogin2.qq.com"
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+    - 8.8.8.8
+    - 1.1.1.1
+
+# ------------------------------------------------------------------------------
+# TUN Device Configuration
+# Transparently captures TCP and UDP traffic from the Linux network stack
+# ------------------------------------------------------------------------------
+tun:
+  enable: true
+  stack: system               # Native Linux kernel network stack
+  device: tun0
+  auto-route: true            # Automatically configures default routing table
+  auto-detect-interface: true # Discovers eth0 / default route
+  dns-hijack:
+    - "tcp://any:53"
+    - "udp://any:53"
+  strict-route: false
+
+# ------------------------------------------------------------------------------
+# Upstream Proxies on Docker Host
+# Points to the proxy running on your Docker host machine
+# ------------------------------------------------------------------------------
+proxies:
+  # Host SOCKS5 proxy
+  - name: "host-socks5"
+    type: socks5
+    server: host.docker.internal
+    port: 6666
+    # username: ""
+    # password: ""
+
+  # Host HTTP proxy
+  - name: "host-http"
+    type: http
+    server: host.docker.internal
+    port: 8888
+    # username: ""
+    # password: ""
+
+# ------------------------------------------------------------------------------
+# Proxy Policy Groups
+# ------------------------------------------------------------------------------
+proxy-groups:
+  # 1. Kiro IDE Proxy Selector: defaults to host SOCKS5 / HTTP proxy
+  - name: "KIRO-PROXY"
+    type: select
+    proxies:
+      - "host-socks5"
+      - "host-http"
+      - DIRECT
+
+  # 2. Antigravity IDE Proxy Selector: defaults to DIRECT
+  - name: "ANTIGRAVITY-PROXY"
+    type: select
+    proxies:
+      - DIRECT
+      - "host-socks5"
+      - "host-http"
+
+  # 3. Browser Proxy Selector (Edge / Chrome / Firefox): defaults to DIRECT
+  - name: "BROWSER-PROXY"
+    type: select
+    proxies:
+      - DIRECT
+      - "host-socks5"
+      - "host-http"
+
+  # 4. Cursor IDE Proxy Selector: defaults to DIRECT
+  - name: "CURSOR-PROXY"
+    type: select
+    proxies:
+      - DIRECT
+      - "host-socks5"
+      - "host-http"
+
+# ------------------------------------------------------------------------------
+# Process & Path-Based Routing Rules
+# Rules are evaluated top-down; first match wins.
+# ------------------------------------------------------------------------------
+rules:
+  # ----------------------------------------------------------------------------
+  # 1. Local container subnets & loopback (Always DIRECT)
+  # ----------------------------------------------------------------------------
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+
+  # ----------------------------------------------------------------------------
+  # 2. Kiro IDE (Routes through configured host proxy by default)
+  # ----------------------------------------------------------------------------
+  - PROCESS-NAME,kiro,KIRO-PROXY
+  - PROCESS-PATH,/opt/kiro/kiro,KIRO-PROXY
+
+  # ----------------------------------------------------------------------------
+  # 3. Antigravity IDE & agy backend (Defaults to DIRECT)
+  # ----------------------------------------------------------------------------
+  - PROCESS-NAME,antigravity-ide,ANTIGRAVITY-PROXY
+  - PROCESS-NAME,antigravity,ANTIGRAVITY-PROXY
+  - PROCESS-PATH,/usr/share/antigravity/antigravity-ide,ANTIGRAVITY-PROXY
+  - PROCESS-NAME,agy,ANTIGRAVITY-PROXY
+  - PROCESS-PATH,/home/coder/.gemini/bin/agy,ANTIGRAVITY-PROXY
+  - PROCESS-PATH,/usr/local/bin/agy,ANTIGRAVITY-PROXY
+
+  # ----------------------------------------------------------------------------
+  # 4. Browsers (Microsoft Edge, Google Chrome, Firefox) (Defaults to DIRECT)
+  # ----------------------------------------------------------------------------
+  - PROCESS-NAME,msedge,BROWSER-PROXY
+  - PROCESS-NAME,msedge_crashpad,BROWSER-PROXY
+  - PROCESS-PATH,/opt/microsoft/msedge/msedge,BROWSER-PROXY
+  - PROCESS-NAME,chrome,BROWSER-PROXY
+  - PROCESS-NAME,google-chrome,BROWSER-PROXY
+  - PROCESS-NAME,chromium,BROWSER-PROXY
+  - PROCESS-NAME,chromium-browser,BROWSER-PROXY
+  - PROCESS-NAME,firefox,BROWSER-PROXY
+
+  # ----------------------------------------------------------------------------
+  # 5. Cursor IDE & VS Code
+  # ----------------------------------------------------------------------------
+  - PROCESS-NAME,cursor,CURSOR-PROXY
+  - PROCESS-PATH,/opt/cursor/cursor,CURSOR-PROXY
+  - PROCESS-NAME,cursor-server,CURSOR-PROXY
+  - PROCESS-NAME,code,CURSOR-PROXY
+
+  # ----------------------------------------------------------------------------
+  # 6. Fallback Rule: Everything else connects directly (apt, git, curl, system)
+  # ----------------------------------------------------------------------------
+  - MATCH,DIRECT

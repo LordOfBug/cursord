@@ -19,28 +19,14 @@ export NODE_TLS_REJECT_UNAUTHORIZED=0
 # Ensure ~/.gemini/bin is in PATH for the agy backend binary
 export PATH="$HOME/.gemini/bin:/usr/local/bin:$PATH"
 
-# Detect proxy settings if configured
-PROXY_FLAGS=()
-if [ -n "$ALL_PROXY" ]; then
-    PROXY_FLAGS+=("--proxy-server=$ALL_PROXY")
-elif [ -n "$all_proxy" ]; then
-    PROXY_FLAGS+=("--proxy-server=$all_proxy")
-elif [ -n "$http_proxy" ]; then
-    PROXY_FLAGS+=("--proxy-server=$http_proxy")
-elif [ -n "$HTTP_PROXY" ]; then
-    PROXY_FLAGS+=("--proxy-server=$HTTP_PROXY")
-fi
-
 # Start app with stability flags for containerized environment
 exec /usr/bin/antigravity \
-    "${PROXY_FLAGS[@]}" \
     --no-sandbox \
     --disable-gpu \
     --disable-gpu-compositing \
     --use-gl=swiftshader \
     --password-store=basic \
     --disable-dev-shm-usage \
-    --ignore-certificate-errors \
     --js-flags="--max-old-space-size=4096" \
     "$@"
 

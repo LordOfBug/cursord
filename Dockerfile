@@ -186,6 +186,14 @@ RUN useradd -m -s /bin/bash coder && \
 RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[program:mihomo]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "command=/usr/local/bin/mihomo -d /etc/mihomo" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "autostart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "priority=5" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "stdout_logfile=/var/log/mihomo.log" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "stderr_logfile=/var/log/mihomo.log" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "[program:xrdp]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/sbin/xrdp -n" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf && \
@@ -193,6 +201,18 @@ RUN echo "[supervisord]" > /etc/supervisor/conf.d/supervisord.conf && \
     echo "[program:xrdp-sesman]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "command=/usr/sbin/xrdp-sesman -n" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisor/conf.d/supervisord.conf
+
+# Install Mihomo (Clash Meta) for process-based transparent TUN routing
+COPY mihomo.config.yaml /etc/mihomo/config.yaml
+RUN echo "Installing Mihomo binary..." && \
+    MIHOMO_URL="https://ghfast.top/https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-v1.19.33.gz" && \
+    curl -fsSL "$MIHOMO_URL" -o /tmp/mihomo.gz || \
+    curl -fsSL "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-v1.19.33.gz" -o /tmp/mihomo.gz && \
+    gzip -d -f /tmp/mihomo.gz && \
+    mv /tmp/mihomo /usr/local/bin/mihomo && \
+    chmod +x /usr/local/bin/mihomo && \
+    setcap cap_net_admin,cap_net_bind_service=+ep /usr/local/bin/mihomo 2>/dev/null || true && \
+    /usr/local/bin/mihomo -t -d /etc/mihomo
 
 # Install latest Antigravity IDE from official Linux release archive and agy CLI backend
 RUN echo "Installing latest Antigravity IDE from official release archive..." && \
